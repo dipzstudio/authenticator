@@ -38,7 +38,7 @@ body.dark {
   max-width: 480px;
   margin: 0 auto;
   /* padding-top: max(env(safe-area-inset-top), 22px); */
-  padding-bottom: max(60px, calc(60px + env(safe-area-inset-bottom)));
+  padding-bottom: max(60px, calc(70px + env(safe-area-inset-bottom)));
   min-height: 100vh;
   display: flex;
   flex-direction: column;
@@ -1650,6 +1650,52 @@ body.dark .info-card p {
   font-weight: 600;
 }
 
+/* Sign Out Section */
+.signout-section {
+  margin-top: 16px;
+  padding-top: 16px;
+  margin-bottom: 20px;
+  border-top: 1px solid #e5e7eb;
+}
+
+body.dark .signout-section {
+  border-top-color: #4b5563;
+}
+
+.signout-button {
+  width: 100%;
+  max-width: 400px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+  color: #ffffff;
+  border: none;
+  border-radius: 12px;
+  padding: 14px 24px;
+  font-size: 1.05rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+}
+
+.signout-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(239, 68, 68, 0.4);
+  background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
+}
+
+.signout-button:active {
+  transform: translateY(0);
+}
+
+.signout-button svg {
+  flex-shrink: 0;
+}
+
 /* Page Content - MINIMAL PADDING */
 .page-content {
   flex: 1;
@@ -1658,7 +1704,7 @@ body.dark .info-card p {
   margin: 0;
   scrollbar-width: none;
   -ms-overflow-style: none;
-  padding-bottom: 20px;
+  padding-bottom: 10px;
 }
 
 .page-content::-webkit-scrollbar {
@@ -2267,6 +2313,10 @@ body.dark .export-item-account {
   transition: all 0.2s;
 }
 
+#selectAllCheckbox + .export-checkmark {
+    right: 4px !important; /* Moves it 4px leftwards from the edge */
+}
+
 body.dark .export-checkmark {
   border-color: #4b5563;
   background-color: #374151;
@@ -2331,10 +2381,14 @@ body.dark .export-checkmark {
 
 .export-qr-container {
   margin-top: 24px;
-  padding: 24px;
+  padding: 10px;
   background: #f9fafb;
   border-radius: 16px;
   text-align: center;
+}
+
+.export-qr-container p {
+	padding: 0 16px;
 }
 
 body.dark .export-qr-container {
@@ -2343,21 +2397,31 @@ body.dark .export-qr-container {
 
 .qr-wrapper {
   background: #ffffff;
-  padding: 20px;
+  padding: 10px;
   border-radius: 12px;
-  display: inline-block;
-  margin-bottom: 16px;
+  margin: 16px 4px;
   box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+  width: 100%;
+  max-width: 100%;
+  overflow: hidden;
+  display: flex;
+  justify-content: center;
 }
 
 body.dark .qr-wrapper {
   background: #ffffff;
 }
 
+#qrCodeCanvas {
+  max-width: 100%;
+  height: auto;
+  display: block;
+}
+
 .btn-download-qr {
   width: 100%;
   max-width: 300px;
-  margin: 0 auto;
+  margin: 10px auto;
   display: flex;
   align-items: center;
   justify-content: center;
