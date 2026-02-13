@@ -2314,7 +2314,7 @@ body.dark .export-item-account {
 }
 
 #selectAllCheckbox + .export-checkmark {
-    right: 4px !important; /* Moves it 4px leftwards from the edge */
+    right: 6px !important; /* Moves it 4px leftwards from the edge */
 }
 
 body.dark .export-checkmark {
@@ -2413,10 +2413,10 @@ body.dark .qr-wrapper {
 }
 
 #qrCodeCanvas {
-  max-width: 100%;
+  max-width: 95%;
   height: auto;
   display: block;
-  margin: 0 auto;
+  margin: 0 auto; !important;
 }
 
 .btn-download-qr {
