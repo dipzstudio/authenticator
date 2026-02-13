@@ -15,15 +15,27 @@ if (!firebase.apps.length) {
 const auth = firebase.auth();
 const db = firebase.firestore();
 
-// Enable offline persistence
-db.enablePersistence().catch((err) => {
-  console.log('Offline persistence error:', err.code);
-});
+// Updated Firebase persistence - no deprecation warning
+try {
+  db.enablePersistence({ synchronizeTabs: true }).catch((err) => {
+    if (err.code === 'failed-precondition') {
+      console.log('Persistence: Multiple tabs open');
+    } else if (err.code === 'unimplemented') {
+      console.log('Persistence not available in this browser');
+    }
+  });
+} catch (err) {
+  console.log('Persistence error:', err.code);
+}
 
+// Cache keys
 const USER_CACHE_KEY = 'uj_user_cache';
+const APP_CACHE_KEY = 'uj_app_cache';
+const BIN_CACHE_KEY = 'uj_bin_cache';
 const EXPORT_CACHE_KEY = 'uj_export_cache';
 const IMPORT_CACHE_KEY = 'uj_import_cache';
 
+// Cache management functions
 function cacheUserData(user) {
   if (!user) {
     sessionStorage.removeItem(USER_CACHE_KEY);
@@ -48,6 +60,10 @@ function getCachedUser() {
 
 function updateUIWithUser(userData) {
   const name = userData.displayName || userData.email.split('@')[0] || 'User';
+  
+  const menuUserName = document.getElementById('menuUserName');
+  const headerUserName = document.getElementById('userName');
+  const userAvatar = document.getElementById('userAvatar');
   
   if (menuUserName) menuUserName.textContent = name;
   if (headerUserName) headerUserName.textContent = name;
@@ -78,6 +94,7 @@ const netStatus = document.getElementById('netStatus');
 
 let currentUser = null;
 let firebaseConnected = false;
+let firebaseConnectionTimer = null;
 
 const currentPage = window.location.pathname.split('/').pop().replace('.html', '') || 'index';
 
@@ -178,7 +195,7 @@ updateNetworkStatus();
 window.addEventListener('online', updateNetworkStatus);
 window.addEventListener('offline', updateNetworkStatus);
 
-// ACCOUNT PAGE - (keeping existing code - lines 178-431 from original)
+// ACCOUNT PAGE
 if (currentPage === 'account') {
   const profileAvatar = document.getElementById('profileAvatar');
   const displayName = document.getElementById('displayName');
@@ -239,31 +256,27 @@ if (currentPage === 'account') {
       }
       
       if (!isValidName(newName)) {
-        nameError.textContent = 'Name must be at least 4 characters (letters only, spaces allowed)';
+        nameError.textContent = 'Name must have at least 4 letters and no numbers';
         return;
       }
       
       try {
         await currentUser.updateProfile({ displayName: newName });
-        await db.collection('users').doc(currentUser.uid).set({
-          displayName: newName,
-          updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-        }, { merge: true });
+        
+        if (menuUserName) menuUserName.textContent = newName;
+        if (headerUserName) headerUserName.textContent = newName;
+        const firstLetter = newName.charAt(0).toUpperCase();
+        if (userAvatar) userAvatar.textContent = firstLetter;
+        if (profileAvatar) profileAvatar.textContent = firstLetter;
         
         displayName.readOnly = true;
         editNameBtn.style.display = 'inline-flex';
         saveNameBtn.style.display = 'none';
         cancelNameBtn.style.display = 'none';
-        nameError.textContent = '';
-        
-        if (menuUserName) menuUserName.textContent = newName;
-        if (headerUserName) headerUserName.textContent = newName;
-        
         showNotification('Name updated successfully!', 'success');
-        originalDisplayName = newName;
+        nameError.textContent = '';
       } catch (error) {
-        console.error('Error updating name:', error);
-        nameError.textContent = 'Failed to update name';
+        nameError.textContent = 'Failed to update name. Please try again.';
       }
     });
   }
@@ -272,10 +285,10 @@ if (currentPage === 'account') {
     changePasswordBtn.addEventListener('click', () => {
       changePasswordForm.style.display = 'block';
       changePasswordBtn.style.display = 'none';
+      passwordError.textContent = '';
       oldPassword.value = '';
       newPassword.value = '';
       confirmPassword.value = '';
-      passwordError.textContent = '';
     });
   }
 
@@ -283,59 +296,51 @@ if (currentPage === 'account') {
     cancelPasswordBtn.addEventListener('click', () => {
       changePasswordForm.style.display = 'none';
       changePasswordBtn.style.display = 'block';
+      passwordError.textContent = '';
       oldPassword.value = '';
       newPassword.value = '';
       confirmPassword.value = '';
-      passwordError.textContent = '';
     });
   }
 
   if (savePasswordBtn) {
     savePasswordBtn.addEventListener('click', async () => {
-      const oldPass = oldPassword.value.trim();
-      const newPass = newPassword.value.trim();
-      const confirmPass = confirmPassword.value.trim();
+      const old = oldPassword.value;
+      const newPass = newPassword.value;
+      const confirm = confirmPassword.value;
       
-      if (!oldPass || !newPass || !confirmPass) {
+      if (!old || !newPass || !confirm) {
         passwordError.textContent = 'All fields are required';
         return;
       }
       
       if (newPass.length < 8) {
-        passwordError.textContent = 'New password must be at least 8 characters';
+        passwordError.textContent = 'Password must be at least 8 characters';
         return;
       }
       
-      if (newPass !== confirmPass) {
+      if (newPass !== confirm) {
         passwordError.textContent = 'New passwords do not match';
         return;
       }
       
       try {
-        const credential = firebase.auth.EmailAuthProvider.credential(
-          currentUser.email,
-          oldPass
-        );
-        
+        const credential = firebase.auth.EmailAuthProvider.credential(currentUser.email, old);
         await currentUser.reauthenticateWithCredential(credential);
         await currentUser.updatePassword(newPass);
         
         changePasswordForm.style.display = 'none';
         changePasswordBtn.style.display = 'block';
+        showNotification('Password updated successfully!', 'success');
+        passwordError.textContent = '';
         oldPassword.value = '';
         newPassword.value = '';
         confirmPassword.value = '';
-        passwordError.textContent = '';
-        
-        showNotification('Password changed successfully!', 'success');
       } catch (error) {
-        console.error('Error changing password:', error);
         if (error.code === 'auth/wrong-password') {
           passwordError.textContent = 'Current password is incorrect';
-        } else if (error.code === 'auth/weak-password') {
-          passwordError.textContent = 'New password is too weak';
         } else {
-          passwordError.textContent = 'Failed to change password';
+          passwordError.textContent = 'Failed to update password';
         }
       }
     });
@@ -352,9 +357,8 @@ if (currentPage === 'account') {
       
       try {
         await auth.sendPasswordResetEmail(currentUser.email);
-        resetSuccessModal.style.display = 'flex';
+        if (resetSuccessModal) resetSuccessModal.style.display = 'flex';
       } catch (error) {
-        console.error('Error sending reset email:', error);
         showNotification('Failed to send reset email', 'error');
       }
     });
@@ -362,15 +366,52 @@ if (currentPage === 'account') {
 
   if (closeResetSuccess) {
     closeResetSuccess.addEventListener('click', () => {
-      resetSuccessModal.style.display = 'none';
+      if (resetSuccessModal) resetSuccessModal.style.display = 'none';
     });
   }
+  
+  // Sign Out Button
+	const signOutBtn = document.getElementById('signOutBtn');
+	const logoutModal = document.getElementById('logoutModal');
+	const confirmLogout = document.getElementById('confirmLogout');
+	const cancelLogout = document.getElementById('cancelLogout');
 
-  resetSuccessModal.addEventListener('click', (e) => {
-    if (e.target === resetSuccessModal) {
-      resetSuccessModal.style.display = 'none';
-    }
-  });
+	if (signOutBtn && logoutModal) {
+	  // 1. Open Modal when Sign Out is clicked
+	  signOutBtn.addEventListener('click', () => {
+		logoutModal.style.display = 'flex';
+	  });
+
+	  // 2. Close Modal only when 'No' is clicked
+	  if (cancelLogout) {
+		cancelLogout.addEventListener('click', () => {
+		  logoutModal.style.display = 'none';
+		});
+	  }
+
+	  // 3. Handle 'Yes' for actual logout and cache cleanup
+	  if (confirmLogout) {
+		confirmLogout.addEventListener('click', async () => {
+		  try {
+			// Clear all session and local caches
+			sessionStorage.removeItem(USER_CACHE_KEY);
+			localStorage.removeItem(APP_CACHE_KEY);
+			localStorage.removeItem(BIN_CACHE_KEY);
+			localStorage.removeItem(EXPORT_CACHE_KEY);
+			
+			// Sign out from Firebase
+			await auth.signOut();
+			
+			// Redirect to login
+			window.location.href = 'login.html';
+		  } catch (error) {
+			console.error('Sign out error:', error);
+			showNotification('Failed to sign out. Please try again.', 'error');
+			logoutModal.style.display = 'none';
+		  }
+		});
+	  }
+	}
 
   auth.onAuthStateChanged((user) => {
     if (!user) {
@@ -379,6 +420,8 @@ if (currentPage === 'account') {
     }
     
     currentUser = user;
+    cacheUserData(user);
+    
     const providerId = user.providerData[0]?.providerId || 'password';
     isEmailPasswordUser = providerId === 'password';
     
@@ -423,9 +466,8 @@ if (currentPage === 'bin') {
   let restoreTargetId = null;
   let binItems = [];
 
-  // Load from cache first
   function loadBinFromCache() {
-    const cached = localStorage.getItem('uj_bin_cache');
+    const cached = localStorage.getItem(BIN_CACHE_KEY);
     if (cached) {
       try {
         const data = JSON.parse(cached);
@@ -440,7 +482,7 @@ if (currentPage === 'bin') {
   }
 
   function cacheBinData() {
-    localStorage.setItem('uj_bin_cache', JSON.stringify({
+    localStorage.setItem(BIN_CACHE_KEY, JSON.stringify({
       items: binItems,
       timestamp: Date.now()
     }));
@@ -581,7 +623,7 @@ if (currentPage === 'bin') {
   });
 }
 
-// IMPORT PAGE - FIXED VERSION
+// IMPORT PAGE - WITH GOOGLE AUTHENTICATOR MIGRATION SUPPORT
 if (currentPage === 'import') {
   const scanImportBtn = document.getElementById('scanImportBtn');
   const stopScanBtn = document.getElementById('stopScanBtn');
@@ -598,7 +640,7 @@ if (currentPage === 'import') {
 
   function showImportError(message) {
     const now = Date.now();
-    if (now - lastErrorTime < 3000) return; // Prevent spam
+    if (now - lastErrorTime < 3000) return;
     lastErrorTime = now;
     
     if (importScanError) {
@@ -614,10 +656,8 @@ if (currentPage === 'import') {
 
   if (scanImportBtn) {
     scanImportBtn.addEventListener('click', async () => {
-      // Check if jsQR is loaded
       if (typeof jsQR === 'undefined') {
         showNotification('QR scanner library not loaded. Please refresh the page.', 'error');
-        console.error('jsQR library not found');
         return;
       }
 
@@ -649,12 +689,14 @@ if (currentPage === 'import') {
     });
   }
 
-  importScanModal.addEventListener('click', (e) => {
-    if (e.target === importScanModal) {
-      stopCamera();
-      importScanModal.style.display = 'none';
-    }
-  });
+  if (importScanModal) {
+    importScanModal.addEventListener('click', (e) => {
+      if (e.target === importScanModal) {
+        stopCamera();
+        importScanModal.style.display = 'none';
+      }
+    });
+  }
 
   function scanQRCode() {
     if (!scanActive || !videoElement.videoWidth) return;
@@ -677,13 +719,12 @@ if (currentPage === 'import') {
 
   async function processImportQR(data) {
     try {
-      console.log('Processing QR data:', data);
+      console.log('QR data received:', data.substring(0, 100));
       
-      // Try parsing as JSON first (our export format or Google Authenticator migration)
+      // 1. Try parsing as JSON (our export format)
       if (data.startsWith('{') || data.startsWith('[')) {
         const importData = JSON.parse(data);
         
-        // Handle our export format
         if (importData.authenticators && Array.isArray(importData.authenticators)) {
           stopCamera();
           importScanModal.style.display = 'none';
@@ -703,7 +744,7 @@ if (currentPage === 'import') {
               });
               successCount++;
             } catch (error) {
-              console.error('Error importing authenticator:', error);
+              console.error('Error importing:', error);
             }
           }
 
@@ -713,9 +754,9 @@ if (currentPage === 'import') {
           }, 1500);
           return;
         }
-      } 
+      }
       
-      // Try parsing as TOTP URI (Google Authenticator, Authy, Microsoft, etc.)
+      // 2. Try parsing as TOTP URI
       if (data.startsWith('otpauth://')) {
         const parsedAuth = parseOTPAuthURI(data);
         
@@ -750,22 +791,59 @@ if (currentPage === 'import') {
         return;
       }
       
-      // Try parsing as Google Authenticator migration format
-      if (data.startsWith('otpauth-migration://')) {
-        showImportError('Google Authenticator migration format not yet supported. Please export individual codes.');
-        return;
+      // 3. Try Google Authenticator migration format
+      if (data.startsWith('otpauth-migration://offline?data=')) {
+        try {
+          const migrationData = parseGoogleAuthMigration(data);
+          
+          if (!migrationData || migrationData.length === 0) {
+            showImportError('Failed to parse migration data');
+            return;
+          }
+
+          stopCamera();
+          importScanModal.style.display = 'none';
+
+          let successCount = 0;
+          for (const auth of migrationData) {
+            try {
+              await db.collection('authenticators').add({
+                uid: currentUser.uid,
+                providerName: auth.issuer || auth.name || 'Unknown',
+                accountName: auth.name || '',
+                secretCode: auth.secret,
+                pinned: false,
+                pinnedAt: null,
+                pinnedOrder: null,
+                createdAt: firebase.firestore.FieldValue.serverTimestamp()
+              });
+              successCount++;
+            } catch (error) {
+              console.error('Error importing from migration:', error);
+            }
+          }
+
+          showNotification(`Successfully imported ${successCount} authenticator(s)!`, 'success');
+          setTimeout(() => {
+            window.location.href = 'index.html';
+          }, 1500);
+          return;
+        } catch (error) {
+          console.error('Migration parsing error:', error);
+          showImportError('Failed to parse Google Authenticator export');
+          return;
+        }
       }
       
       showImportError('Unsupported QR code format');
     } catch (error) {
-      console.error('Error processing import QR:', error);
+      console.error('Error processing QR:', error);
       showImportError('Failed to process QR code');
     }
   }
 
   function parseOTPAuthURI(uri) {
     try {
-      // Format: otpauth://totp/Provider:account?secret=XXX&issuer=Provider
       const url = new URL(uri);
       
       if (url.protocol !== 'otpauth:') return null;
@@ -796,6 +874,178 @@ if (currentPage === 'import') {
       console.error('Error parsing OTP URI:', error);
       return null;
     }
+  }
+
+  function parseGoogleAuthMigration(uri) {
+	  try {
+		const url = new URL(uri);
+		const dataParam = url.searchParams.get('data');
+		
+		if (!dataParam) {
+		  console.error('No data parameter found');
+		  return null;
+		}
+		
+		// Decode base64
+		const binaryString = atob(dataParam);
+		const bytes = new Uint8Array(binaryString.length);
+		for (let i = 0; i < binaryString.length; i++) {
+		  bytes[i] = binaryString.charCodeAt(i);
+		}
+		
+		console.log('📦 Decoded bytes length:', bytes.length);
+		console.log('📦 First 20 bytes:', Array.from(bytes.slice(0, 20)).map(b => '0x' + b.toString(16).padStart(2, '0')).join(' '));
+		
+		const result = [];
+		let i = 0;
+		let accountIndex = 0;
+		
+		// Read varint helper
+		function readVarint() {
+		  let value = 0;
+		  let shift = 0;
+		  while (i < bytes.length) {
+			const byte = bytes[i++];
+			value |= (byte & 0x7f) << shift;
+			if (!(byte & 0x80)) break;
+			shift += 7;
+		  }
+		  return value;
+		}
+		
+		// Read length-delimited field
+		function readLengthDelimited() {
+		  const length = readVarint();
+		  const data = bytes.slice(i, i + length);
+		  i += length;
+		  return data;
+		}
+		
+		while (i < bytes.length) {
+		  if (i >= bytes.length) break;
+		  
+		  const fieldTag = bytes[i++];
+		  const fieldNumber = fieldTag >> 3;
+		  const wireType = fieldTag & 0x07;
+		  
+		  console.log(`\n🔍 Position ${i-1}: Field ${fieldNumber}, Wire type ${wireType}`);
+		  
+		  if (fieldNumber === 1 && wireType === 2) { // OtpParameters message
+			accountIndex++;
+			console.log(`\n🎯 ===== ACCOUNT #${accountIndex} =====`);
+			
+			const messageData = readLengthDelimited();
+			console.log('📋 Account message length:', messageData.length);
+			
+			// Parse the OtpParameters message
+			let secret = '';
+			let name = '';
+			let issuer = '';
+			let j = 0;
+			
+			while (j < messageData.length) {
+			  const tag = messageData[j++];
+			  const field = tag >> 3;
+			  const wire = tag & 0x07;
+			  
+			  console.log(`  └─ Field ${field}, Wire ${wire} at position ${j-1}`);
+			  
+			  if (field === 1 && wire === 2) { // secret (bytes)
+				let len = messageData[j++];
+				if (len & 0x80) {
+				  len = ((len & 0x7f) | (messageData[j++] << 7));
+				}
+				const secretBytes = messageData.slice(j, j + len);
+				secret = base32Encode(secretBytes);
+				console.log('     🔑 Secret length:', len, 'bytes ->', secret.substring(0, 10) + '...');
+				j += len;
+			  } else if (field === 2 && wire === 2) { // name (string)
+				let len = messageData[j++];
+				if (len & 0x80) {
+				  len = ((len & 0x7f) | (messageData[j++] << 7));
+				}
+				name = String.fromCharCode(...messageData.slice(j, j + len));
+				console.log('     👤 Name:', name);
+				j += len;
+			  } else if (field === 3 && wire === 2) { // issuer (string)
+				let len = messageData[j++];
+				if (len & 0x80) {
+				  len = ((len & 0x7f) | (messageData[j++] << 7));
+				}
+				issuer = String.fromCharCode(...messageData.slice(j, j + len));
+				console.log('     🏢 Issuer:', issuer);
+				j += len;
+			  } else if (wire === 0) { // varint
+				let val = messageData[j++];
+				while (val & 0x80 && j < messageData.length) {
+				  val = messageData[j++];
+				}
+				console.log('     ⏭️  Skipped varint field', field);
+			  } else if (wire === 2) { // length-delimited
+				let len = messageData[j++];
+				if (len & 0x80) {
+				  len = ((len & 0x7f) | (messageData[j++] << 7));
+				}
+				j += len;
+				console.log('     ⏭️  Skipped length-delimited field', field, 'length', len);
+			  } else {
+				console.warn('     ⚠️  Unknown wire type', wire, 'for field', field);
+				j++;
+			  }
+			}
+			
+			if (secret) {
+			  result.push({ secret, name, issuer });
+			  console.log('✅ Account parsed successfully:', issuer || name);
+			} else {
+			  console.warn('❌ Account skipped - no secret found');
+			}
+		  } else if (wireType === 0) { // varint
+			readVarint();
+			console.log('⏭️  Skipped varint at top level');
+		  } else if (wireType === 2) { // length-delimited
+			const data = readLengthDelimited();
+			console.log('⏭️  Skipped length-delimited at top level, length:', data.length);
+		  } else {
+			console.warn('⚠️  Unknown wire type at top level:', wireType);
+			i++;
+		  }
+		}
+		
+		console.log('\n📊 FINAL RESULT: Parsed', result.length, 'accounts');
+		result.forEach((acc, idx) => {
+		  console.log(`  ${idx + 1}. ${acc.issuer || acc.name} - secret: ${acc.secret.substring(0, 10)}...`);
+		});
+		
+		return result;
+	  } catch (error) {
+		console.error('❌ Google Auth migration parse error:', error);
+		console.error('Stack:', error.stack);
+		return null;
+	  }
+	}
+
+  function base32Encode(bytes) {
+    const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
+    let bits = 0;
+    let value = 0;
+    let output = '';
+    
+    for (let i = 0; i < bytes.length; i++) {
+      value = (value << 8) | bytes[i];
+      bits += 8;
+      
+      while (bits >= 5) {
+        output += alphabet[(value >>> (bits - 5)) & 31];
+        bits -= 5;
+      }
+    }
+    
+    if (bits > 0) {
+      output += alphabet[(value << (5 - bits)) & 31];
+    }
+    
+    return output;
   }
 
   function stopCamera() {
@@ -838,7 +1088,7 @@ if (currentPage === 'import') {
   });
 }
 
-// EXPORT PAGE - FIXED VERSION
+// EXPORT PAGE - FIXED
 if (currentPage === 'export') {
   const exportList = document.getElementById('exportList');
   const exportBtn = document.getElementById('exportBtn');
@@ -848,7 +1098,6 @@ if (currentPage === 'export') {
   
   let authenticators = [];
 
-  // Load from cache first
   function loadExportFromCache() {
     const cached = localStorage.getItem(EXPORT_CACHE_KEY);
     if (cached) {
@@ -888,35 +1137,81 @@ if (currentPage === 'export') {
   }
 
   function renderExportList() {
+    const selectAllContainer = document.getElementById('selectAllContainer');
+    const selectAllCheckbox = document.getElementById('selectAllCheckbox');
+
     if (authenticators.length === 0) {
-      exportList.innerHTML = `<div style="text-align:center; padding:40px 20px; color:#6b7280;"><p style="font-size:1.1rem; margin-bottom:8px;">No authenticators to export</p><p style="font-size:0.9rem;">Add authenticators first</p></div>`;
-      if (exportBtn) exportBtn.disabled = true;
-      return;
+        exportList.innerHTML = `<div style="text-align:center; padding:40px 20px; color:#6b7280;"><p style="font-size:1.1rem; margin-bottom:8px;">No authenticators to export</p></div>`;
+        if (exportBtn) exportBtn.disabled = true;
+        if (selectAllContainer) selectAllContainer.style.display = 'none';
+        return;
     }
+
+    // Show "Select All" and reset its state
+    if (selectAllContainer) selectAllContainer.style.display = 'flex';
+    if (selectAllCheckbox) selectAllCheckbox.checked = true;
 
     exportList.innerHTML = '';
     authenticators.forEach(auth => {
-      const item = document.createElement('div');
-      item.className = 'export-item';
-      const accountNameHtml = auth.accountName ? `<div class="export-item-account">${auth.accountName}</div>` : '';
-      item.innerHTML = `<div class="export-item-info"><div class="export-item-provider">${auth.providerName}</div>${accountNameHtml}</div><label class="export-checkbox-wrapper"><input type="checkbox" class="export-checkbox" data-id="${auth.id}" checked><span class="export-checkmark"></span></label>`;
-      exportList.appendChild(item);
+        const item = document.createElement('div');
+        item.className = 'export-item';
+        const accountNameHtml = auth.accountName ? `<div class="export-item-account">${auth.accountName}</div>` : '';
+        item.innerHTML = `
+            <div class="export-item-info">
+                <div class="export-item-provider">${auth.providerName}</div>
+                ${accountNameHtml}
+            </div>
+            <label class="export-checkbox-wrapper">
+                <input type="checkbox" class="export-checkbox" data-id="${auth.id}" checked>
+                <span class="export-checkmark"></span>
+            </label>`;
+        exportList.appendChild(item);
     });
 
     if (exportBtn) exportBtn.disabled = false;
-  }
+
+    // --- LOGIC: Select All / Deselect All ---
+    if (selectAllCheckbox) {
+        selectAllCheckbox.onclick = () => {
+            const checkboxes = document.querySelectorAll('.export-checkbox');
+            checkboxes.forEach(cb => cb.checked = selectAllCheckbox.checked);
+        };
+    }
+
+    // If any item is unchecked, the "Select All" box must also uncheck
+    document.querySelectorAll('.export-list .export-checkbox').forEach(cb => {
+        cb.onchange = () => {
+            const allChecked = document.querySelectorAll('.export-list .export-checkbox:checked').length;
+            const total = document.querySelectorAll('.export-list .export-checkbox').length;
+            if (selectAllCheckbox) {
+                selectAllCheckbox.checked = (allChecked === total);
+            }
+        };
+    });
+}
 
   if (exportBtn) {
-    exportBtn.addEventListener('click', async () => {
-      // Check if QRCode library is loaded
-      if (typeof QRCode === 'undefined') {
-        showNotification('QR code library not loaded. Please refresh the page.', 'error');
-        console.error('QRCode library not found');
+    exportBtn.addEventListener('click', () => {
+      // Check if qrcode-generator library loaded
+      if (typeof qrcode === 'undefined') {
+        showNotification('QR library not loaded. Please refresh the page.', 'error');
+        console.error('qrcode-generator library not found in export.html');
         return;
       }
 
       const checkedBoxes = document.querySelectorAll('.export-checkbox:checked');
       const selectedIds = Array.from(checkedBoxes).map(cb => cb.getAttribute('data-id'));
+	  
+	  // MAX 6 VALIDATION
+    if (checkedBoxes.length > 6) {
+        showNotification('Maximum 6 authenticator can be exported at a time! Try Again.', 'error');
+        return;
+    }
+    
+    if (checkedBoxes.length === 0) {
+        showNotification('Please select at least one authenticator', 'error');
+        return;
+    }
       
       if (selectedIds.length === 0) {
         showNotification('Please select at least one authenticator', 'error');
@@ -934,59 +1229,200 @@ if (currentPage === 'export') {
         authenticators: selectedAuths
       };
 
-      try {
-        const qrData = JSON.stringify(exportData);
-        
-        // Use QRCode.toCanvas method
-        QRCode.toCanvas(qrCodeCanvas, qrData, {
-          width: 300,
-          margin: 2,
-          errorCorrectionLevel: 'M',
-          color: { 
-            dark: '#000000', 
-            light: '#FFFFFF' 
-          }
-        }, (error) => {
-          if (error) {
-            console.error('QR generation error:', error);
-            showNotification('Failed to generate QR code', 'error');
-          } else {
-            exportQRContainer.style.display = 'block';
-            showNotification(`QR code generated for ${selectedAuths.length} authenticator(s)`, 'success');
-          }
-        });
-      } catch (error) {
-        console.error('Error generating QR:', error);
-        showNotification('Failed to generate QR code', 'error');
-      }
+  try {
+	  function base32ToBytes(base32) {
+		const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
+		let bits = 0, value = 0;
+		const output = [];
+		base32 = base32.replace(/=+$/, "").toUpperCase();
+		for (let i = 0; i < base32.length; i++) {
+		  const idx = alphabet.indexOf(base32[i]);
+		  const val = alphabet.indexOf(base32[i]);
+		  if (val === -1) continue;
+		  value = (value << 5) | val;
+		  bits += 5;
+		  if (bits >= 8) {
+			output.push((value >>> (bits - 8)) & 255);
+			bits -= 8;
+		  }
+		}
+		return new Uint8Array(output);
+	  }
+
+	  /**
+	   * Helper: Encode Varint (Protobuf requirement)
+	   */
+	  function encodeVarint(value) {
+		const bytes = [];
+		while (value > 127) {
+		  bytes.push((value & 0x7f) | 0x80);
+		  value >>>= 7;
+		}
+		bytes.push(value);
+		return bytes;
+	  }
+
+	  /**
+	   * Helper: Build Protobuf Message
+	   */
+	  function buildMessage(tag, type, data) {
+		const head = encodeVarint((tag << 3) | type);
+		if (type === 2) { // Length-delimited (string, bytes, sub-message)
+		  const len = encodeVarint(data.length);
+		  return [...head, ...len, ...data];
+		}
+		if (type === 0) { // Varint (int32, bool, enum)
+		  return [...head, ...encodeVarint(data)];
+		}
+		return [];
+	  }
+
+	  let migrationPayload = [];
+
+	  // Step 1: Wrap each authenticator in an OtpParameters message (Tag 1)
+	  selectedAuths.forEach(auth => {
+		let otpParams = [];
+		const secretBytes = base32ToBytes(auth.secretCode);
+		const nameBytes = new TextEncoder().encode(auth.accountName || "");
+		const issuerBytes = new TextEncoder().encode(auth.providerName || "");
+
+		// Field 1: Secret (bytes)
+		otpParams.push(...buildMessage(1, 2, secretBytes));
+		// Field 2: Name (string)
+		otpParams.push(...buildMessage(2, 2, nameBytes));
+		// Field 3: Issuer (string)
+		otpParams.push(...buildMessage(3, 2, issuerBytes));
+		// Field 4: Algorithm (SHA1 = 1)
+		otpParams.push(...buildMessage(4, 0, 1));
+		// Field 5: Digits (6 digits = 1)
+		otpParams.push(...buildMessage(5, 0, 1));
+		// Field 6: Type (TOTP = 2)
+		otpParams.push(...buildMessage(6, 0, 2));
+
+		// Add this authenticator to the payload as Field 1 (Repeated)
+		migrationPayload.push(...buildMessage(1, 2, new Uint8Array(otpParams)));
+	  });
+
+	  // Step 2: Global Migration Metadata
+	  migrationPayload.push(...buildMessage(2, 0, 1)); // Version
+	  migrationPayload.push(...buildMessage(3, 0, 1)); // Batch Size
+	  migrationPayload.push(...buildMessage(4, 0, 0)); // Batch Index
+	  migrationPayload.push(...buildMessage(5, 0, 12345)); // Batch ID
+
+	  // Step 3: Convert to Base64
+	  const uint8 = new Uint8Array(migrationPayload);
+	  let binaryString = "";
+	  for (let i = 0; i < uint8.length; i++) {
+		binaryString += String.fromCharCode(uint8[i]);
+	  }
+	  
+	  // Use btoa and ensure it's URI encoded for the 'data' parameter
+	  const base64Data = btoa(binaryString);
+	  const finalURI = `otpauth-migration://offline?data=${encodeURIComponent(base64Data)}`;
+
+	  // Step 4: Generate QR with higher error correction (M or Q)
+	  qrCodeCanvas.innerHTML = ''; 
+	  const qr = qrcode(0, 'M');
+	  qr.addData(finalURI);
+	  qr.make();
+
+	  const size = qr.getModuleCount();
+	  const cellSize = 6; // Larger cell size for better scanning
+	  const margin = 20;
+	  qrCodeCanvas.width = size * cellSize + margin * 2;
+	  qrCodeCanvas.height = size * cellSize + margin * 2;
+
+	  const ctx = qrCodeCanvas.getContext("2d");
+	  ctx.fillStyle = "#FFFFFF";
+	  ctx.fillRect(0, 0, qrCodeCanvas.width, qrCodeCanvas.height);
+	  ctx.fillStyle = "#000000";
+	  
+	  for (let row = 0; row < size; row++) {
+		for (let col = 0; col < size; col++) {
+		  if (qr.isDark(row, col)) {
+			ctx.fillRect(col * cellSize + margin, row * cellSize + margin, cellSize, cellSize);
+		  }
+		}
+	  }
+
+	  exportQRContainer.style.display = "block";
+	  showNotification(`Generated migration QR for ${selectedAuths.length} accounts`, "success");
+	  
+	// SCROLL TO BOTTOM LOGIC
+	exportQRContainer.scrollIntoView({
+		behavior: 'smooth',
+		block: 'center'
+	});
+
+	} catch (error) {
+	  console.error("Export Error:", error);
+	  showNotification("Failed to generate code", "error");
+	}	
     });
   }
 
-  if (downloadQRBtn) {
-    downloadQRBtn.addEventListener('click', () => {
-      const now = new Date();
-      const dd = now.getDate().toString().padStart(2,'0');
-      const mm = (now.getMonth()+1).toString().padStart(2,'0');
-      const yyyy = now.getFullYear();
-      const hh = now.getHours().toString().padStart(2,'0');
-      const min = now.getMinutes().toString().padStart(2,'0');
-      const ss = now.getSeconds().toString().padStart(2,'0');
-      const filename = `exported_qr_${dd}${mm}${yyyy}_${hh}${min}${ss}.jpg`;
-      
-      qrCodeCanvas.toBlob((blob) => {
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.href = url;
-        link.download = filename;
-        link.click();
-        URL.revokeObjectURL(url);
-        
-        showNotification('QR code image downloaded', 'success');
-      }, 'image/jpeg', 0.95);
-    });
-  }
+	if (downloadQRBtn) {
+	  downloadQRBtn.addEventListener('click', () => {
+		try {
+		  const qrCanvas = document.getElementById('qrCodeCanvas');
+		  if (!qrCanvas) {
+			showNotification('No QR code found to download', 'error');
+			return;
+		  }
 
-  // Load from cache first
+		  // 1. Set a Minimum Width to prevent text overflow
+		  const minWidth = 450; 
+		  const padding = 40;
+		  
+		  // The image width will be at least 450px or the QR width + padding
+		  const wrapperWidth = Math.max(minWidth, qrCanvas.width + (padding * 2));
+		  
+		  const textSpaceTop = 120;
+		  const textSpaceBottom = 60;
+		  const wrapperHeight = qrCanvas.height + textSpaceTop + textSpaceBottom;
+
+		  const tempCanvas = document.createElement('canvas');
+		  const ctx = tempCanvas.getContext('2d');
+		  tempCanvas.width = wrapperWidth;
+		  tempCanvas.height = wrapperHeight;
+
+		  // 2. Background
+		  ctx.fillStyle = '#FFFFFF';
+		  ctx.fillRect(0, 0, wrapperWidth, wrapperHeight);
+
+		  // 3. Add Text at Top (Centered to the Wrapper)
+		  ctx.fillStyle = '#1f2937';
+		  ctx.textAlign = 'center';
+		  
+		  ctx.font = 'bold 24px Arial';
+		  ctx.fillText('Scan the QR', wrapperWidth / 2, 50);
+
+		  ctx.font = '16px Arial';
+		  const subText = 'Download UnderJoy Authenticator app and scan';
+		  const subText2 = 'the QR to add the authenticators';
+		  ctx.fillText(subText, wrapperWidth / 2, 85);
+		  ctx.fillText(subText2, wrapperWidth / 2, 105);
+
+		  // 4. Draw QR centered in the wrapper
+		  // Calculate X to center the QR: (Total Width - QR Width) / 2
+		  const qrX = (wrapperWidth - qrCanvas.width) / 2;
+		  ctx.drawImage(qrCanvas, qrX, textSpaceTop);
+
+		  // 5. Download
+		  const filename = `UnderJoy_Export_${Date.now()}.png`;
+		  const link = document.createElement('a');
+		  link.download = filename;
+		  link.href = tempCanvas.toDataURL('image/png');
+		  link.click();
+
+		  showNotification('Enhanced QR downloaded!', 'success');
+		} catch (error) {
+		  console.error('Download error:', error);
+		  showNotification('Failed to generate image', 'error');
+		}
+	  });
+	}
+
   loadExportFromCache();
 
   auth.onAuthStateChanged((user) => {
@@ -1006,7 +1442,6 @@ if (currentPage === 'export') {
       userAvatar.style.backgroundColor = getRandomLightColor();
     }
     
-    // Delayed Firebase sync
     setTimeout(() => {
       if (navigator.onLine) {
         firebaseConnected = true;
@@ -1016,24 +1451,24 @@ if (currentPage === 'export') {
   });
 }
 
-// SUPPORT PAGE (keeping existing code)
+// SUPPORT PAGE
 if (currentPage === 'support') {
-  const contactUsBtn = document.getElementById('contactUsBtn');
-  const contactForm = document.getElementById('contactForm');
-  const submitContactBtn = document.getElementById('submitContactBtn');
-  const cancelContactBtn = document.getElementById('cancelContactBtn');
-  const contactSubject = document.getElementById('contactSubject');
-  const contactDescription = document.getElementById('contactDescription');
-  const contactError = document.getElementById('contactError');
-  
   const faqSearchInput = document.getElementById('faqSearchInput');
   const faqClearSearch = document.getElementById('faqClearSearch');
   const faqNoResults = document.getElementById('faqNoResults');
-  const faqItems = document.querySelectorAll('.faq-item');
+  const contactUsBtn = document.getElementById('contactUsBtn');
+  const contactForm = document.getElementById('contactForm');
+  const cancelContactBtn = document.getElementById('cancelContactBtn');
+  const submitContactBtn = document.getElementById('submitContactBtn');
+  const contactSubject = document.getElementById('contactSubject');
+  const contactDescription = document.getElementById('contactDescription');
+  const contactError = document.getElementById('contactError');
 
   if (faqSearchInput) {
     faqSearchInput.addEventListener('input', (e) => {
       const searchTerm = e.target.value.toLowerCase().trim();
+      const faqItems = document.querySelectorAll('.faq-item');
+      let hasResults = false;
       
       if (searchTerm) {
         faqClearSearch.classList.add('visible');
@@ -1041,29 +1476,23 @@ if (currentPage === 'support') {
         faqClearSearch.classList.remove('visible');
       }
       
-      let hasResults = false;
-      
       faqItems.forEach(item => {
-        const questionText = item.querySelector('.faq-question span').textContent.toLowerCase();
-        const answerText = item.querySelector('.faq-answer').textContent.toLowerCase();
-        const searchText = item.getAttribute('data-search-text') || '';
+        const question = item.querySelector('.faq-question').textContent.toLowerCase();
+        const answer = item.querySelector('.faq-answer').textContent.toLowerCase();
         
-        const matches = questionText.includes(searchTerm) || 
-                       answerText.includes(searchTerm) || 
-                       searchText.toLowerCase().includes(searchTerm);
-        
-        if (searchTerm === '' || matches) {
+        if (searchTerm && (question.includes(searchTerm) || answer.includes(searchTerm))) {
           item.classList.remove('hidden');
+          item.classList.add('matched');
           hasResults = true;
           
-          if (searchTerm && matches) {
-            item.classList.add('matched');
-          } else {
-            item.classList.remove('matched');
+          if (question.includes(searchTerm)) {
+            item.classList.add('active');
           }
-        } else {
+        } else if (searchTerm) {
           item.classList.add('hidden');
           item.classList.remove('active', 'matched');
+        } else {
+          item.classList.remove('hidden', 'active', 'matched');
         }
       });
       
@@ -1080,6 +1509,7 @@ if (currentPage === 'support') {
       faqSearchInput.value = '';
       faqClearSearch.classList.remove('visible');
       
+      const faqItems = document.querySelectorAll('.faq-item');
       faqItems.forEach(item => {
         item.classList.remove('hidden', 'matched');
       });
@@ -1265,7 +1695,7 @@ if (currentPage === 'feedback') {
   });
 }
 
-// Common auth state
+// Common auth state for other pages
 if (!['account', 'bin', 'import', 'export', 'support', 'feedback'].includes(currentPage)) {
   auth.onAuthStateChanged((user) => {
     if (!user && currentPage !== 'login') {
