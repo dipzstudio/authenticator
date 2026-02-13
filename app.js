@@ -1209,6 +1209,33 @@ function getRandomLightColor() {
   return `hsl(${hue}, 70%, 85%)`;
 }
 
+async function performSilentBinCleanup(user) {
+  if (!navigator.onLine || !user) return;
+
+  try {
+    const ninetyDaysAgo = new Date(Date.now() - (90 * 24 * 60 * 60 * 1000));
+    
+    // Query items that are older than 90 days
+    const expiredSnapshot = await db.collection('deleted_authenticators')
+      .where('uid', '==', user.uid)
+      .where('deletedAt', '<=', ninetyDaysAgo)
+      .get();
+
+    if (expiredSnapshot.empty) return;
+
+    // Delete them one by one or in a batch
+    const batch = db.batch();
+    expiredSnapshot.forEach(doc => {
+      batch.delete(doc.ref);
+    });
+
+    await batch.commit();
+    console.log(`Silent Cleanup: Removed ${expiredSnapshot.size} expired items.`);
+  } catch (error) {
+    console.error('Silent cleanup failed:', error);
+  }
+}
+
 auth.onAuthStateChanged((user) => {  // No async here to avoid any await blocking
   if (!user) {
     // Clear all caches on logout
@@ -1247,6 +1274,7 @@ auth.onAuthStateChanged((user) => {  // No async here to avoid any await blockin
         console.warn('Token refresh failed (ignored):', error);  // Swallow - won't break app
       });
     }
+	performSilentBinCleanup(user);
   }, 2000);
 });
 
