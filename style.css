@@ -1895,6 +1895,7 @@ body.dark .import-instructions h2 {
 
 .import-subtitle {
   font-size: 0.95rem;
+  text-align: center;
   color: #6b7280;
   margin-bottom: 20px;
   line-height: 1.5;
@@ -2228,6 +2229,7 @@ body.dark .notification-offline {
 /* ===== EXPORT PAGE STYLES ===== */
 .export-subtitle {
   font-size: 0.95rem;
+  text-align: center;
   color: #6b7280;
   margin-bottom: 20px;
   line-height: 1.5;
