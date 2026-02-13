@@ -63,19 +63,31 @@
 
 		<div id="notificationContainer" class="notification-container" style="display:none;"></div>
 		
-		<div class="page-content" style="padding-bottom: 160px;">
+		<div class="page-content" style="padding-bottom: 80px;">
 			<div class="section-header">
 				<h2>Export Authenticators</h2>
 			</div>
 			
 			<p class="export-subtitle">Select the Authenticators you want to export</p>
 			
+			<div id="selectAllContainer" class="export-item" style="display:none; margin-bottom: 16px; background: rgba(124, 58, 237, 0.05); border: 1px dashed #7c3aed;">
+				<div class="export-item-info">
+					<div class="export-item-provider" style="margin-bottom: 0; font-weight: 700;">Select All</div>
+				</div>
+				<label class="export-checkbox-wrapper" style="padding-left: 0; padding-right: 32px;">
+					<input type="checkbox" id="selectAllCheckbox" class="export-checkbox">
+					<span class="export-checkmark" style="left: auto; right: 0;"></span>
+				</label>
+			</div>
+			
 			<!-- Export List -->
             <div id="exportList" class="export-list"></div>
 
             <!-- Export QR Container (Hidden initially) -->
             <div id="exportQRContainer" class="export-qr-container" style="display:none;">
-                <div class="qr-wrapper">
+				<p>Scan the QR from your app's import section.</p>
+				
+                <div class="qr-wrapper">					
                     <canvas id="qrCodeCanvas"></canvas>
                 </div>
                 <button id="downloadQRBtn" class="btn-download-qr">
@@ -201,7 +213,7 @@
     <script src="https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore-compat.js"></script>
 
     <!-- QR Code Library -->
-    <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js"></script>
 
     <!-- Menu Script -->
     <script src="menu.js"></script>
