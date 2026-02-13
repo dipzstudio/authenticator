@@ -90,7 +90,10 @@ function initializeLoginPage() {
   const deleteAccountBtn = document.getElementById('deleteAccountBtn');
 
   let isSignup = false;
+  let processingSignup = false;
   let isDeletingAccount = false;
+  let isDeleteSuccessState = false;
+  
   
 function isValidEmail(email) {
   const validDomains = [
@@ -155,7 +158,7 @@ function showLogin() {
   socialSection.style.display = 'block';
   switchLink.innerHTML = '';
   authError.textContent = '';
-  [email, name, password, confirmPassword].forEach(el => el.value = '');
+  [email, nameInput, password, confirmPassword].forEach(el => el.value = '');
 }
 
 function showSignUp() {
@@ -168,7 +171,7 @@ function showSignUp() {
   forgotPasswordLink.style.display = 'none';  // ADD THIS LINE
   deleteSocialButtons.style.display = 'none';
   authError.textContent = '';
-  [email, name, password, confirmPassword].forEach(el => el.value = '');
+  [email, nameInput, password, confirmPassword].forEach(el => el.value = '');
 
   switchLink.innerHTML = "Already have account? <a id='loginLink'>Click Login</a>";
 
@@ -196,7 +199,7 @@ function showResetPassword() {
   socialSection.style.display = 'none';
   deleteSocialButtons.style.display = 'none';
   authError.textContent = '';
-  [email, name, password, confirmPassword].forEach(el => el.value = '');
+  [email, nameInput, password, confirmPassword].forEach(el => el.value = '');
   
   switchLink.innerHTML = '<a id="backToLoginFromReset">Back to Login</a>';
   
@@ -225,7 +228,7 @@ function showDeleteAccount() {
   socialSection.style.display = 'none';
   deleteSocialButtons.style.display = 'block';  // SHOW DELETE BUTTONS
   authError.textContent = '';
-  [email, name, password, confirmPassword].forEach(el => el.value = '');
+  [email, nameInput, password, confirmPassword].forEach(el => el.value = '');
   
   switchLink.innerHTML = '<a id="backToLoginFromDelete">Back to Login</a>';
   
@@ -283,21 +286,24 @@ function showDeleteAccount() {
 	  }
 
       try {
-        const userCredential = await auth.createUserWithEmailAndPassword(emailVal, passwordVal);
+			processingSignup = true; // Set flag to true to block the auth listener
+			
+			const userCredential = await auth.createUserWithEmailAndPassword(emailVal, passwordVal);
 
-        await userCredential.user.updateProfile({
-            displayName: nameVal
-        });
-        
-        await userCredential.user.getIdToken(true);
-        await auth.currentUser.reload();
-        await new Promise(resolve => setTimeout(resolve, 1500));
-
-        window.location.href = 'index.html';
+			await userCredential.user.updateProfile({
+				displayName: nameVal
+			});
+			
+			// Finalize state before manual redirect
+			await userCredential.user.getIdToken(true);
+			await auth.currentUser.reload();
+			
+			// Manual redirect after profile is set
+			window.location.href = 'index.html';
 
 		} catch (error) {
-			console.error('Signup error:', error);
-			authError.textContent = handleNetworkError(error);
+			processingSignup = false; // Reset flag so user can try again if it fails
+			authError.textContent = error.message;
 		}
     });
   }
@@ -688,36 +694,38 @@ if (googleLogin) {
 	if (confirmDeleteAccount) {
 	  confirmDeleteAccount.addEventListener('click', async () => {
 
+		// hide Confirm/Cancel buttons
 		document.querySelector('.modal-actions-horizontal').style.display = 'none';
 
 		try {
 		  const user = auth.currentUser;
 
 		  if (!user) {
-			alert('Please log in again to continue.');
+			alert("No authenticated user found.");
 			return;
 		  }
 
+		  // 🔥 ONLY delete Firebase account
 		  await user.delete();
 
+		  // update modal content to success state
 		  document.querySelector('#deleteConfirmModal .privacy-scroll-content').innerHTML = `
 			<h2>Account Deleted</h2>
 			<p>Your account has been deleted successfully!</p>
 		  `;
 
+		  // show OK button
 		  deleteSuccessActions.style.display = 'flex';
+		  isDeleteSuccessState = true;
 
 		} catch (error) {
 		  if (error.code === 'auth/requires-recent-login') {
-			alert('Please re-authenticate and try again.');
+			alert("For security reasons, please log in again before deleting.");
 		  } else {
-			if (!navigator.onLine) {
-			  alert('Network Error! Please check your connection and try again.');
-			} else {
-			  alert('Failed to delete account. Please try again.');
-			}
+			alert("Error deleting account: " + error.message);
 		  }
 
+		  // restore original buttons for retry
 		  document.querySelector('.modal-actions-horizontal').style.display = 'flex';
 		}
 	  });
@@ -728,19 +736,24 @@ if (googleLogin) {
 
 		document.getElementById('deleteConfirmModal').style.display = 'none';
 
+		// reset modal text to original
 		document.querySelector('#deleteConfirmModal .privacy-scroll-content').innerHTML = `
 		  <h2>Delete Account</h2>
 		  <p>Please note, once the account is deleted, all your information will be deleted. However, you can sign up anytime.</p>
 		`;
 
+		// restore default button state
 		document.querySelector('.modal-actions-horizontal').style.display = 'flex';
 		deleteSuccessActions.style.display = 'none';
 
+		// log out & reset UI
 		await auth.signOut();
 		isDeletingAccount = false;
+		isDeleteSuccessState = false;
 		email.value = '';
 		password.value = '';
 		showLogin();
+		socialSection.style.display = 'block';    
 	  });
 	}
 
@@ -772,7 +785,7 @@ if (googleLogin) {
 	
 	// Auth state listener
 	auth.onAuthStateChanged((user) => {
-	  if (user) {
+	  if (user && !processingSignup) {
 		console.log('User authenticated:', user.email);
 		
 		// Don't redirect if we're in account deletion flow
