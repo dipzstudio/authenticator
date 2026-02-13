@@ -1331,6 +1331,9 @@ if (currentPage === 'export') {
 	  const margin = 20;
 	  qrCodeCanvas.width = size * cellSize + margin * 2;
 	  qrCodeCanvas.height = size * cellSize + margin * 2;
+	  
+	  qrCodeCanvas.style.width = '100%'; 
+	  qrCodeCanvas.style.maxWidth = '400px';
 
 	  const ctx = qrCodeCanvas.getContext("2d");
 	  ctx.fillStyle = "#FFFFFF";
