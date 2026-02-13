@@ -171,7 +171,7 @@ function generateTOTP(secret) {
 }
 
 // Helper function to add authenticator to UI and Firebase
-async function addAuthenticatorToUI(provider, secret, accountName = '') {
+async function addAuthenticatorToUI(provider, accountName = '', secret) {
   // Generate temporary ID for immediate UI update
   const tempId = 'temp_' + Date.now();
   
@@ -353,19 +353,24 @@ authenticatorList.addEventListener('touchend', async (e) => {
   const loader = document.getElementById('refreshLoader');
   
   if (pullDistance > pullThreshold) {
-    // Check if online
     if (!navigator.onLine) {
-      loader.style.display = 'none';
+      loader.style.display = 'none'; // Ensure it hides if offline
       showNotification('No network found. Try Again!', 'offline');
     } else {
-      // Show loader and sync
-      setTimeout(async () => {
+      // Force immediate display, then sync
+      loader.style.display = 'block';
+      
+      try {
         if (authUser) {
-          await loadAccounts(authUser);
+          await loadAccountsFromFirebase(); // Call the specific firebase sync
         }
-        loader.style.display = 'none';
         showNotification('Authenticator is synced!', 'synced');
-      }, 600);
+      } catch (err) {
+        showNotification('Sync failed', 'error');
+      } finally {
+        // Always hide loader after action
+        loader.style.display = 'none';
+      }
     }
   } else {
     loader.style.display = 'none';
