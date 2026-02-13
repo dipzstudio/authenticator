@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Support - UnderJoy Authenticator</title>
+    <link rel="stylesheet" href="style.css">
+    
+    <script type="module">
+      import { SafeArea } from '@capacitor-community/safe-area';
+      
+      SafeArea.getSafeAreaInsets().then((data) => {
+        document.documentElement.style.setProperty('--safe-area-inset-top', `${data.insets.top}px`);
+        document.documentElement.style.setProperty('--safe-area-inset-bottom', `${data.insets.bottom}px`);
+        document.documentElement.style.setProperty('--safe-area-inset-left', `${data.insets.left}px`);
+        document.documentElement.style.setProperty('--safe-area-inset-right', `${data.insets.right}px`);
+      }).catch(err => {
+        console.error('SafeArea error:', err);
+        document.documentElement.style.setProperty('--safe-area-inset-top', '50px');
+      });
+    </script>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div class="header-left">
+                <button class="menu-icon" id="menuToggle" aria-label="Menu">
+                    <style>
+						.menu-icon rect,.menu-icon line{stroke-dasharray:100;stroke-dashoffset:100;animation:draw 7s ease-in-out infinite}
+						.menu-icon rect{animation-delay:0s}
+						.menu-icon line:nth-of-type(1){animation-delay:1s}
+						.menu-icon line:nth-of-type(2){animation-delay:1.4s}
+						.menu-icon line:nth-of-type(3){animation-delay:1.8s}
+						@keyframes draw{0%{stroke-dashoffset:100}20%{stroke-dashoffset:0}60%{stroke-dashoffset:0}80%{stroke-dashoffset:100}100%{stroke-dashoffset:100}}
+					</style>
+					<svg class="menu-icon" width="42" height="42" viewBox="0 0 24 24" fill="none" stroke-linecap="round" stroke-linejoin="round">
+						<rect x="3" y="4" width="6" height="16" rx="2" stroke="#6366F1" stroke-width="2.8"/>
+						<line x1="12" y1="7" x2="21" y2="7" stroke="#E0B022" stroke-width="2.8"/>
+						<line x1="12" y1="12" x2="21" y2="12" stroke="#06B6D4" stroke-width="2.8"/>
+						<line x1="12" y1="17" x2="21" y2="17" stroke="#10B981" stroke-width="2.8"/>
+					</svg>
+                </button>
+                <div class="header-text">
+                    <h1>UnderJoy Authenticator</h1>
+                    <p class="welcome-text">Welcome, <span id="userName">User</span></p>
+                </div>
+            </div>
+            <div class="header-right" style="display:flex; align-items:center; gap:6px;">
+                <div id="netStatus" style="justify-content:center; margin-right:8px;">
+                    <svg width="40" height="40" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <circle cx="12" cy="12" r="10" stroke="#BFBFBF" stroke-width="1"/>                      
+                      <circle cx="12" cy="17" r="1.7" fill="#6BD36B"/>
+                      <path d="M8.5 14C10.8 12 13.2 12 15.5 14" stroke="#6BD36B" stroke-width="1.6" stroke-linecap="round"/>
+                      <path d="M7 11C10.5 8 13.5 8 17 11" stroke="#6BD36B" stroke-width="1.6" stroke-linecap="round"/>
+                      <path d="M5.8 8.5C9.5 5 14.5 5 18.2 8.5" stroke="#6BD36B" stroke-width="1.6" stroke-linecap="round"/>
+                    </svg>
+                </div>
+                <button id="themeToggle" class="theme-toggle" aria-label="Toggle theme">
+                    <span class="theme-icon">🌙</span>
+                </button>
+            </div>
+        </header>
+
+		<div id="notificationContainer" class="notification-container" style="display:none;"></div>
+
+        <div class="page-content">
+			<div class="section-header">
+				<h2>Help & Support</h2>
+			</div>
+			
+			<div class="app-info">
+				<h3>Frequently Asked Questions</h2>
+				
+				<!-- FAQ Search -->
+				<div class="faq-search-container">
+				  <div class="faq-search-wrapper">
+					<svg class="faq-search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+					  <circle cx="11" cy="11" r="8"></circle>
+					  <path d="m21 21-4.35-4.35"></path>
+					</svg>
+					<input type="text" id="faqSearchInput" class="faq-search-input" placeholder="Search questions..." autocomplete="off">					
+					<button id="faqClearSearch" class="faq-clear-search">
+						<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+							<circle cx="12" cy="12" r="10"></circle>
+							<line x1="15" y1="9" x2="9" y2="15"></line>
+							<line x1="9" y1="9" x2="15" y2="15"></line>
+						</svg>
+					</button>
+				  </div>
+				</div>
+				
+				<div class="faq-container">
+                <!-- FAQ Item 1 -->
+                <div class="faq-item">
+                    <div class="faq-question" data-faq="1">
+                        <span>How do I add an authenticator?</span>
+                        <svg class="faq-icon" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <line x1="12" y1="5" x2="12" y2="19"></line>
+                            <line x1="5" y1="12" x2="19" y2="12"></line>
+                        </svg>
+                    </div>
+                    <div class="faq-answer">
+                        <p>To add an authenticator:</p>
+                        <ol>
+                            <li>Tap the "Add" button on the home screen</li>
+                            <li>Choose either "Scan QR" to scan a QR code from your service provider, or add manually</li>
+                            <li>If adding manually, enter the provider name (e.g., Google, GitHub) and the secret code provided by the service</li>
+                            <li>Tap "Add Authenticator" to save</li>
+                        </ol>
+                        <p>Your new authenticator will appear in the list and start generating codes immediately.</p>
+                    </div>
+                </div>
+
+                <!-- FAQ Item 2 -->
+                <div class="faq-item">
+                    <div class="faq-question" data-faq="2">
+                        <span>How do I delete an authenticator?</span>
+                        <svg class="faq-icon" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <line x1="12" y1="5" x2="12" y2="19"></line>
+                            <line x1="5" y1="12" x2="19" y2="12"></line>
+                        </svg>
+                    </div>
+                    <div class="faq-answer">
+                        <p>To delete an authenticator:</p>
+                        <ol>
+                            <li>Find the authenticator you want to delete on the home screen</li>
+                            <li>Tap the delete (trash) icon in the top-right corner of the authenticator card</li>
+                            <li>Confirm the deletion in the popup that appears</li>
+                        </ol>
+                        <p><strong>Note:</strong> Deleted authenticators are moved to the Bin and kept for 90 days. You can restore them from the Bin menu option if needed.</p>
+                    </div>
+                </div>
+
+                <!-- FAQ Item 3 -->
+                <div class="faq-item">
+                    <div class="faq-question" data-faq="3">
+                        <span>How do I rename or edit my account name?</span>
+                        <svg class="faq-icon" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <line x1="12" y1="5" x2="12" y2="19"></line>
+                            <line x1="5" y1="12" x2="19" y2="12"></line>
+                        </svg>
+                    </div>
+                    <div class="faq-answer">
+                        <p>To edit your account name:</p>
+                        <ol>
+                            <li>Open the menu by tapping the menu icon (☰) in the top-left</li>
+                            <li>Select "Account" from the menu</li>
+                            <li>Tap the edit (pencil) icon next to your name</li>
+                            <li>Type your new name</li>
+                            <li>Tap the checkmark icon to save or X to cancel</li>
+                        </ol>
+                        <p>Your name will be updated across the app immediately.</p>
+                    </div>
+                </div>
+
+                <!-- FAQ Item 4 -->
+                <div class="faq-item">
+                    <div class="faq-question" data-faq="4">
+                        <span>I'm having trouble logging in. What should I do?</span>
+                        <svg class="faq-icon" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <line x1="12" y1="5" x2="12" y2="19"></line>
+                            <line x1="5" y1="12" x2="19" y2="12"></line>
+                        </svg>
+                    </div>
+                    <div class="faq-answer">
+                        <p>If you're experiencing login issues:</p>
+                        <ul>
+                            <li><strong>Forgot password:</strong> Use the "Forgot Password?" link on the login screen to reset your password via email</li>
+                            <li><strong>Wrong credentials:</strong> Double-check your email and password for typos</li>
+                            <li><strong>Account locked:</strong> After multiple failed attempts, wait a few minutes before trying again</li>
+                            <li><strong>Email not verified:</strong> Check your email inbox (including spam) for a verification link</li>
+                            <li><strong>Network issues:</strong> Ensure you have a stable internet connection</li>
+                        </ul>
+                        <p>If problems persist, use the Contact Us form below to report the issue.</p>
+                    </div>
+                </div>
+
+                <!-- FAQ Item 5 -->
+                <div class="faq-item">
+                    <div class="faq-question" data-faq="5">
+                        <span>How do I transfer my authenticators to a new device?</span>
+                        <svg class="faq-icon" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <line x1="12" y1="5" x2="12" y2="19"></line>
+                            <line x1="5" y1="12" x2="19" y2="12"></line>
+                        </svg>
+                    </div>
+                    <div class="faq-answer">
+                        <p>To transfer authenticators to a new device:</p>
+                        <p><strong>On your old device:</strong></p>
+                        <ol>
+                            <li>Open the menu and select "Export"</li>
+                            <li>Select the authenticators you want to transfer (all are selected by default)</li>
+                            <li>Tap "Export" to generate a QR code</li>
+                        </ol>
+                        <p><strong>On your new device:</strong></p>
+                        <ol>
+                            <li>Install and login to UnderJoy Authenticator</li>
+                            <li>Open the menu and select "Import"</li>
+                            <li>Tap "Scan QR" and scan the QR code from your old device</li>
+                        </ol>
+                        <p>All selected authenticators will be imported instantly!</p>
+                    </div>
+                </div>
+
+                <!-- FAQ Item 6 -->
+                <div class="faq-item">
+                    <div class="faq-question" data-faq="6">
+                        <span>What happens to deleted authenticators?</span>
+                        <svg class="faq-icon" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <line x1="12" y1="5" x2="12" y2="19"></line>
+                            <line x1="5" y1="12" x2="19" y2="12"></line>
+                        </svg>
+                    </div>
+                    <div class="faq-answer">
+                        <p>When you delete an authenticator:</p>
+                        <ul>
+                            <li>It's moved to the Bin (accessible from the menu)</li>
+                            <li>It's kept for 90 days before permanent deletion</li>
+                            <li>You can see how many days remain before auto-deletion</li>
+                            <li>You can restore it anytime within the 90-day period</li>
+                            <li>After 90 days, it's automatically and permanently deleted</li>
+                        </ul>
+                        <p>To restore a deleted authenticator, go to Menu → Bin → tap the restore icon.</p>
+                    </div>
+                </div>
+
+                <!-- FAQ Item 7 -->
+                <div class="faq-item">
+                    <div class="faq-question" data-faq="7">
+                        <span>Does the app work offline?</span>
+                        <svg class="faq-icon" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <line x1="12" y1="5" x2="12" y2="19"></line>
+                            <line x1="5" y1="12" x2="19" y2="12"></line>
+                        </svg>
+                    </div>
+                    <div class="faq-answer">
+                        <p>Yes! UnderJoy Authenticator works fully offline:</p>
+                        <ul>
+                            <li><strong>Code generation:</strong> All authentication codes are generated locally on your device</li>
+                            <li><strong>Offline access:</strong> You can view and use all your authenticators without internet</li>
+                            <li><strong>Data sync:</strong> When you're back online, any changes sync automatically to the cloud</li>
+                            <li><strong>Network indicator:</strong> The app shows your connection status in the top-right corner</li>
+                        </ul>
+                        <p>Your codes will continue working even if you have no internet connection!</p>
+                    </div>
+                </div>
+				</div>
+				
+				<div id="faqNoResults" class="faq-no-results">
+				  <p>No questions found matching your search</p>
+				  <small>Try different keywords or clear your search</small>
+				</div>
+			</div>
+			
+			<!-- Contact Us Button -->
+            <button id="contactUsBtn" class="action-button" style="margin-top: 32px;">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align: -2px;">
+                    <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path>
+                </svg>
+                Contact Us
+            </button>
+
+            <!-- Contact Form (Hidden by default) -->
+            <div id="contactForm" class="contact-form" style="display:none;">
+                <h3>Contact Support</h3>
+                <div class="form-group">
+                    <label for="contactSubject">Subject</label>
+                    <input type="text" id="contactSubject" placeholder="Brief description of your issue">
+                </div>
+                
+                <div class="form-group">
+                    <label for="contactDescription">Issue Description</label>
+                    <textarea id="contactDescription" rows="6" placeholder="Please provide detailed information about your issue"></textarea>
+                </div>
+                
+                <div id="contactError" class="error-message"></div>
+                
+                <div class="button-row">
+                    <button id="submitContactBtn" class="btn-primary">Submit</button>
+                    <button id="cancelContactBtn" class="btn-secondary">Cancel</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Fixed Bottom Button -->
+        <div class="bottom-action">
+            <a href="index.html" class="home-button-fixed">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+                    <polyline points="9 22 9 12 15 12 15 22"></polyline>
+                </svg>
+                Back to Home
+            </a>
+        </div>
+    </div>
+
+    <!-- Side Menu -->
+    <div id="sideMenu" class="side-menu">
+        <div class="menu-content">
+            <div class="menu-header">
+                <div class="user-avatar" id="userAvatar">U</div>
+                <div class="user-info">
+                    <div class="user-name" id="menuUserName">User</div>
+                </div>
+            </div>
+            
+            <nav class="menu-nav">
+                <a href="index.html" class="menu-item">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+                        <polyline points="9 22 9 12 15 12 15 22"></polyline>
+                    </svg>
+                    <span>Home</span>
+                </a>
+                <a href="account.html" class="menu-item">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                        <circle cx="12" cy="7" r="4"></circle>
+                    </svg>
+                    <span>Account</span>
+                </a>
+                <a href="import.html" class="menu-item">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                        <polyline points="7 10 12 15 17 10"></polyline>
+                        <line x1="12" y1="15" x2="12" y2="3"></line>
+                    </svg>
+                    <span>Import</span>
+                </a>
+                <a href="export.html" class="menu-item">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                        <polyline points="17 8 12 3 7 8"></polyline>
+                        <line x1="12" y1="3" x2="12" y2="15"></line>
+                    </svg>
+                    <span>Export</span>
+                </a>
+                <a href="bin.html" class="menu-item">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="3 6 5 6 21 6"></polyline>
+                        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                    </svg>
+                    <span>Bin</span>
+                </a>
+                <a href="support.html" class="menu-item active">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path>
+                        <line x1="12" y1="17" x2="12.01" y2="17"></line>
+                    </svg>
+                    <span>Support</span>
+                </a>
+                <a href="feedback.html" class="menu-item">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path>
+                    </svg>
+                    <span>Feedback</span>
+                </a>
+                <a href="privacy.html" class="menu-item">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+                    </svg>
+                    <span>Privacy Policy</span>
+                </a>
+                <a href="about.html" class="menu-item">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <line x1="12" y1="16" x2="12" y2="12"></line>
+                        <line x1="12" y1="8" x2="12.01" y2="8"></line>
+                    </svg>
+                    <span>About Us</span>
+                </a>
+            </nav>
+            
+            <div class="menu-footer">
+                <div class="app-version">Version 1.0.0</div>
+            </div>
+        </div>
+    </div>
+    <div id="menuOverlay" class="menu-overlay"></div>
+
+    <!-- Firebase -->
+    <script src="https://www.gstatic.com/firebasejs/12.7.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/12.7.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore-compat.js"></script>
+
+    <!-- Menu Script -->
+    <script src="menu.js"></script>
+</body>
+</html>

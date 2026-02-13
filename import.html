@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Import - UnderJoy Authenticator</title>
+    <link rel="stylesheet" href="style.css">
+    
+    <script type="module">
+      import { SafeArea } from '@capacitor-community/safe-area';
+      
+      SafeArea.getSafeAreaInsets().then((data) => {
+        document.documentElement.style.setProperty('--safe-area-inset-top', `${data.insets.top}px`);
+        document.documentElement.style.setProperty('--safe-area-inset-bottom', `${data.insets.bottom}px`);
+        document.documentElement.style.setProperty('--safe-area-inset-left', `${data.insets.left}px`);
+        document.documentElement.style.setProperty('--safe-area-inset-right', `${data.insets.right}px`);
+      }).catch(err => {
+        console.error('SafeArea error:', err);
+        document.documentElement.style.setProperty('--safe-area-inset-top', '50px');
+      });
+    </script>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div class="header-left">
+                <button class="menu-icon" id="menuToggle" aria-label="Menu">
+                    <style>
+						.menu-icon rect,.menu-icon line{stroke-dasharray:100;stroke-dashoffset:100;animation:draw 7s ease-in-out infinite}
+						.menu-icon rect{animation-delay:0s}
+						.menu-icon line:nth-of-type(1){animation-delay:1s}
+						.menu-icon line:nth-of-type(2){animation-delay:1.4s}
+						.menu-icon line:nth-of-type(3){animation-delay:1.8s}
+						@keyframes draw{0%{stroke-dashoffset:100}20%{stroke-dashoffset:0}60%{stroke-dashoffset:0}80%{stroke-dashoffset:100}100%{stroke-dashoffset:100}}
+					</style>
+					<svg class="menu-icon" width="42" height="42" viewBox="0 0 24 24" fill="none" stroke-linecap="round" stroke-linejoin="round">
+						<rect x="3" y="4" width="6" height="16" rx="2" stroke="#6366F1" stroke-width="2.8"/>
+						<line x1="12" y1="7" x2="21" y2="7" stroke="#E0B022" stroke-width="2.8"/>
+						<line x1="12" y1="12" x2="21" y2="12" stroke="#06B6D4" stroke-width="2.8"/>
+						<line x1="12" y1="17" x2="21" y2="17" stroke="#10B981" stroke-width="2.8"/>
+					</svg>
+                </button>
+                <div class="header-text">
+                    <h1>UnderJoy Authenticator</h1>
+                    <p class="welcome-text">Welcome, <span id="userName">User</span></p>
+                </div>
+            </div>
+            <div class="header-right" style="display:flex; align-items:center; gap:6px;">
+                <div id="netStatus" style="justify-content:center; margin-right:8px;">
+                    <svg width="40" height="40" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <circle cx="12" cy="12" r="10" stroke="#BFBFBF" stroke-width="1"/>                      
+                      <circle cx="12" cy="17" r="1.7" fill="#6BD36B"/>
+                      <path d="M8.5 14C10.8 12 13.2 12 15.5 14" stroke="#6BD36B" stroke-width="1.6" stroke-linecap="round"/>
+                      <path d="M7 11C10.5 8 13.5 8 17 11" stroke="#6BD36B" stroke-width="1.6" stroke-linecap="round"/>
+                      <path d="M5.8 8.5C9.5 5 14.5 5 18.2 8.5" stroke="#6BD36B" stroke-width="1.6" stroke-linecap="round"/>
+                    </svg>
+                </div>
+                <button id="themeToggle" class="theme-toggle" aria-label="Toggle theme">
+                    <span class="theme-icon">🌙</span>
+                </button>
+            </div>
+        </header>
+
+		<div id="notificationContainer" class="notification-container" style="display:none;"></div>
+
+        <div class="page-content">
+			<div class="section-header">
+				<h2>Transfer Authenticators</h2>
+			</div>
+            <!-- Import Instructions -->
+            <div class="import-instructions">                
+                <p class="import-subtitle">Transfer all your authenticators in UnderJoy Authenticator app from your old device</p>
+                
+                <div class="instruction-steps">
+                    <div class="instruction-step">
+                        <div class="step-number">1</div>
+                        <div class="step-text">Open Menu bar from the top left and click on 'Export'</div>
+                    </div>
+                    <div class="instruction-step">
+                        <div class="step-number">2</div>
+                        <div class="step-text">Select the authenticator/s you want to transfer and click on 'Export' button below</div>
+                    </div>
+                    <div class="instruction-step">
+                        <div class="step-number">3</div>
+                        <div class="step-text">Click 'Scan QR Code' below and scan the QR from your old device or any authenticator app</div>
+                    </div>
+                </div>
+                
+                <button id="scanImportBtn" class="btn-scan-import">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
+                        <circle cx="12" cy="13" r="4"></circle>
+                    </svg>
+                    Scan QR Code
+                </button>
+            </div>
+        </div>
+
+        <!-- Fixed Bottom Button -->
+        <div class="bottom-action">
+            <a href="index.html" class="home-button-fixed">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+                    <polyline points="9 22 9 12 15 12 15 22"></polyline>
+                </svg>
+                Back to Home
+            </a>
+        </div>
+    </div>
+
+    <!-- Import Scanner Modal -->
+    <div id="importScanModal" class="import-scan-modal">
+        <div class="import-scan-content">
+            <div class="import-scan-header">
+                <h3>Scan QR Code</h3>
+            </div>
+            <div class="import-scan-body">
+                <div id="importCameraPreview" class="import-camera-preview">
+                    <video id="importVideoElement" autoplay playsinline style="display:none;"></video>
+                    <canvas id="importCanvasElement" style="display:none;"></canvas>
+                    <div id="importScanOverlay" class="scan-overlay" style="display:none;">
+                        <div class="scan-line"></div>
+                    </div>
+                </div>
+                <div id="importScanError" class="import-scan-error"></div>
+            </div>
+            <div class="import-scan-footer">
+                <button id="stopScanBtn" class="btn-stop-scan">Stop Scan</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Side Menu -->
+    <div id="sideMenu" class="side-menu">
+        <div class="menu-content">
+            <div class="menu-header">
+                <div class="user-avatar" id="userAvatar">U</div>
+                <div class="user-info">
+                    <div class="user-name" id="menuUserName">User</div>
+                </div>
+            </div>
+            
+            <nav class="menu-nav">
+                <a href="index.html" class="menu-item">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+                        <polyline points="9 22 9 12 15 12 15 22"></polyline>
+                    </svg>
+                    <span>Home</span>
+                </a>
+                <a href="account.html" class="menu-item">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                        <circle cx="12" cy="7" r="4"></circle>
+                    </svg>
+                    <span>Account</span>
+                </a>
+                <a href="import.html" class="menu-item active">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                        <polyline points="7 10 12 15 17 10"></polyline>
+                        <line x1="12" y1="15" x2="12" y2="3"></line>
+                    </svg>
+                    <span>Import</span>
+                </a>
+                <a href="export.html" class="menu-item">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                        <polyline points="17 8 12 3 7 8"></polyline>
+                        <line x1="12" y1="3" x2="12" y2="15"></line>
+                    </svg>
+                    <span>Export</span>
+                </a>
+                <a href="bin.html" class="menu-item">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="3 6 5 6 21 6"></polyline>
+                        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                    </svg>
+                    <span>Bin</span>
+                </a>
+                <a href="support.html" class="menu-item">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path>
+                        <line x1="12" y1="17" x2="12.01" y2="17"></line>
+                    </svg>
+                    <span>Support</span>
+                </a>
+                <a href="feedback.html" class="menu-item">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path>
+                    </svg>
+                    <span>Feedback</span>
+                </a>
+                <a href="privacy.html" class="menu-item">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+                    </svg>
+                    <span>Privacy Policy</span>
+                </a>
+                <a href="about.html" class="menu-item">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <line x1="12" y1="16" x2="12" y2="12"></line>
+                        <line x1="12" y1="8" x2="12.01" y2="8"></line>
+                    </svg>
+                    <span>About Us</span>
+                </a>
+            </nav>
+            
+            <div class="menu-footer">
+                <div class="app-version">Version 1.0.0</div>
+            </div>
+        </div>
+    </div>
+    <div id="menuOverlay" class="menu-overlay"></div>
+
+    <!-- Firebase -->
+    <script src="https://www.gstatic.com/firebasejs/12.7.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/12.7.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore-compat.js"></script>
+
+    <!-- jsQR Library for QR Code Scanning -->
+    <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
+
+    <!-- Menu Script -->
+    <script src="menu.js"></script>
+</body>
+</html>

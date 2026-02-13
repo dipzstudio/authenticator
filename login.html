@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Login - UnderJoy Authenticator</title>
+    <link rel="stylesheet" href="style.css">
+	
+	<script type="module">
+	  import { SafeArea } from '@capacitor-community/safe-area';
+	  
+	  SafeArea.getSafeAreaInsets().then((data) => {
+		console.log('Safe area data:', data);
+		
+		document.documentElement.style.setProperty('--safe-area-inset-top', `${data.insets.top}px`);
+		document.documentElement.style.setProperty('--safe-area-inset-bottom', `${data.insets.bottom}px`);
+		document.documentElement.style.setProperty('--safe-area-inset-left', `${data.insets.left}px`);
+		document.documentElement.style.setProperty('--safe-area-inset-right', `${data.insets.right}px`);
+	  }).catch(err => {
+		console.error('SafeArea error:', err);
+		document.documentElement.style.setProperty('--safe-area-inset-top', '50px');
+	  });
+	</script>
+</head>
+<body class="login-body">
+    <div class="login-container">
+        <div class="login-card">
+            <div class="login-header">
+                <h1>🔐 UnderJoy Authenticator</h1>
+            </div>
+
+            <div id="loginForm" class="auth-form">
+                <h2 id="formTitle">Login</h2>
+
+                <div class="form-group">
+                    <label for="email">Email</label>
+                    <input type="email" id="email" placeholder="you@example.com" required>
+                </div>
+
+                <div class="form-group" id="nameGroup" style="display:none;">
+                    <label for="name">Name</label>
+                    <input type="text" id="name" placeholder="Your full name">
+                </div>
+
+                <div class="form-group" id="PasswordGroup">
+                    <label for="password">Password</label>
+                    <div class="password-field">
+                        <input type="password" id="password" placeholder="Enter password" required>
+                        <button type="button" class="toggle-password" data-target="password">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                                <circle cx="12" cy="12" r="3"></circle>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="form-group" id="confirmPasswordGroup" style="display:none;">
+                    <label for="confirmPassword">Confirm Password</label>
+                    <div class="password-field">
+                        <input type="password" id="confirmPassword" placeholder="Confirm password">
+                        <button type="button" class="toggle-password" data-target="confirmPassword">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                                <circle cx="12" cy="12" r="3"></circle>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+
+                <div id="authError" class="error-message"></div>
+
+                <div class="button-group">
+                    <button id="loginBtn" class="btn-primary">Login</button>
+                    <button id="signUpBtn" class="btn-secondary">Sign Up</button>
+                    <button id="sendResetBtn" class="btn-primary" style="display:none;">Send Password Reset Link</button>
+                    <button id="deleteAccountBtn" class="btn-danger" style="display:none;">Delete Account</button>
+                </div>
+
+                <div id="forgotPasswordLink" class="switch-link">
+                    Forgot Password? <a href="javascript:void(0)" id="forgotLink">Click to Reset</a>
+                </div>
+
+                <div id="switchLink" class="switch-link"></div>
+
+                <div id="socialSection">
+                    <div class="divider">
+                        <span>OR</span>
+                    </div>
+                    <div class="social-login">
+                        <button id="googleLogin" class="btn-social btn-google">
+                            <svg width="18" height="18" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48">
+                                <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
+                                <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>
+                                <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/>
+                                <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
+                                <path fill="none" d="M0 0h48v48H0z"/>
+                            </svg>
+                            Continue with Google
+                        </button>
+                        <button id="appleLogin" class="btn-social btn-apple">
+                            <svg width="26" height="26" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                <path d="M17.05 20.28c-.98.95-2.05.88-3.08.4-1.09-.5-2.08-.48-3.24 0-1.44.62-2.2.44-3.06-.4C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8 1.18-.24 2.31-.93 3.57-.84 1.51.12 2.65.72 3.4 1.8-3.12 1.87-2.38 5.98.48 7.13-.57 1.5-1.31 2.99-2.54 4.09l.01-.01zM12.03 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25z"/>
+                            </svg>
+                            Continue with Apple
+                        </button>
+                    </div>
+				</div>
+                <div id="deleteSocialButtons" style="display:none;">
+                    <div class="divider">
+                        <span>OR</span>
+                    </div>
+
+                    <div class="social-login">
+                        <button id="deleteWithGoogle" class="btn-social btn-google">
+                            <svg width="18" height="18" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48">
+                                <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
+                                <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>
+                                <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/>
+                                <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
+                                <path fill="none" d="M0 0h48v48H0z"/>
+                            </svg>
+                            Delete with Google
+                        </button>
+                        <button id="deleteWithApple" class="btn-social btn-apple">
+                            <svg width="26" height="26" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                <path d="M17.05 20.28c-.98.95-2.05.88-3.08.4-1.09-.5-2.08-.48-3.24 0-1.44.62-2.2.44-3.06-.4C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8 1.18-.24 2.31-.93 3.57-.84 1.51.12 2.65.72 3.4 1.8-3.12 1.87-2.38 5.98.48 7.13-.57 1.5-1.31 2.99-2.54 4.09l.01-.01zM12.03 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25z"/>
+                            </svg>
+                            Delete with Apple
+                        </button>
+                    </div>
+                </div>
+                <div class="delete-account-link">
+                    <a href="javascript:void(0)" id="deleteAccountLink">Delete My Account</a>
+                </div>
+				
+				<div class="privacy-link-wrapper">
+					<a href="javascript:void(0)" id="openPrivacy" class="privacy-link">Read our Privacy policy Here</a>
+				</div>
+
+            <footer class="login-footer">
+                <p>&copy; 2025 DipZ Studio. All rights reserved.</p>
+            </footer>
+        </div>
+    </div>
+    
+    <div id="privacyModal" class="privacy-overlay">
+        <div class="privacy-container">
+            <div class="privacy-scroll-content">
+                <h2>Privacy Policy</h2>
+                <p>Your privacy is our priority. This policy explains how <strong>UnderJoy Authenticator</strong> handles your data:</p>
+                <ul>
+                    <li><strong>Account Information:</strong> We only save your <strong>email address</strong> and <strong>Name</strong> to manage your sign-in, account verification and show your Name inside the app for better experience. Note, your password is never stored as GOOGLE manages the authentication.</li>
+                    <li><strong>Authenticator Data:</strong> We save the <strong>Provider Name</strong> and <strong>Login Name</strong> solely for your visual reference in the app.</li>
+                    <li><strong>Usage Limits:</strong> You can use MFA (Multi Factor Authentication) of as many as application you want. We do not use your details for any purpose other than providing the authentication service.</li>
+                    <li><strong>Data Deletion:</strong> If you delete an authenticator card, all associated data is permanently removed from our database.</li>
+                    <li><strong>Transparency:</strong> We do not share or sell your data to any third parties.</li>
+					<li><strong>Contact:</strong> We encourage feedback to improve the app experience. To share feedback or contact developer team, please drop us an email to <strong>dipzstudio@gmail.com</strong></li>
+                </ul>
+            </div>
+            <div class="privacy-footer">
+                <button id="closePrivacy" class="btn-ok">OK</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Reset Password Confirmation Modal -->
+    <div id="resetModal" class="privacy-overlay">
+        <div class="privacy-container modal-small-custom">
+            <div class="privacy-scroll-content">
+                <h2>Reset Password</h2>
+                <p id="resetMessage"></p>
+            </div>
+            <div class="privacy-footer">
+                <button id="closeReset" class="btn-ok">OK</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Delete Account Confirmation Modal -->
+    <div id="deleteConfirmModal" class="privacy-overlay">
+        <div class="privacy-container modal-small-custom">
+            <div class="privacy-scroll-content">
+                <h2>Delete Account</h2>
+                <p>Please note, once the account is deleted, all your information will be deleted. However, you can sign up anytime.</p>
+            </div>
+            <div class="modal-actions-horizontal">
+                <button id="cancelDeleteAccount" class="btn-secondary">Cancel</button>
+                <button id="confirmDeleteAccount" class="btn-danger">Confirm</button>
+            </div>
+            <div id="deleteSuccessActions" class="modal-actions-horizontal" style="display:none;">
+                <button id="deleteSuccessOk" class="btn-primary">OK</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://www.gstatic.com/firebasejs/12.7.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/12.7.0/firebase-auth-compat.js"></script>
+	<script src="https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore-compat.js"></script>
+    <script src="login.js"></script>
+</body>
+</html>
