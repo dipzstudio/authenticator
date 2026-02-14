@@ -16,10 +16,9 @@ async function initializeFirebase() {
       console.log('Firebase initialized');
       
       // ✅ Enable offline persistence AFTER db is initialized
-      await db.enablePersistence()
-        .catch((err) => {
-          console.log('Offline persistence error:', err.code);
-        });
+      db.settings({
+		  cacheSizeBytes: firebase.firestore.CACHE_SIZE_UNLIMITED
+		});
       
       // ✅ Initialize app AFTER Firebase is ready
       initializeApp();
