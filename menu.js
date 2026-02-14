@@ -83,12 +83,6 @@ function updateUIWithUser(userData) {
   }
 }
 
-if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', initializeMenuPage);
-} else {
-  initializeMenuPage();
-}
-
 function initializeMenuPage() {
   
 const menuToggle = document.getElementById('menuToggle');
@@ -431,6 +425,109 @@ if (currentPage === 'account') {
 		});
 	  }
 	}
+
+	// Delete Account from Account Page
+  const deleteAccountLinkFromAccount = document.getElementById('deleteAccountLinkFromAccount');
+  const deleteAccountModal = document.getElementById('deleteAccountModal');
+  const deleteAccountMessage = document.getElementById('deleteAccountMessage');
+  const confirmDeleteAccountFromAccount = document.getElementById('confirmDeleteAccountFromAccount');
+  const cancelDeleteAccountFromAccount = document.getElementById('cancelDeleteAccountFromAccount');
+
+  if (deleteAccountLinkFromAccount) {
+    deleteAccountLinkFromAccount.addEventListener('click', async () => {
+      try {
+        // Step 1: Check if user has any authenticators
+        if (!currentUser) {
+          showNotification('Please login first', 'error');
+          return;
+        }
+
+        // Check for active authenticators
+        const authenticatorsSnapshot = await db.collection('authenticators')
+          .where('uid', '==', currentUser.uid)
+          .get();
+
+        if (!authenticatorsSnapshot.empty) {
+          showNotification('To delete account, please clear all your authenticators first.', 'error');
+          return;
+        }
+
+        // Step 2: Check internet connection
+        if (!navigator.onLine) {
+          showNotification('To delete the account, please connect with internet', 'error');
+          return;
+        }
+
+        // Step 3: Show confirmation modal
+        deleteAccountModal.style.display = 'flex';
+      } catch (error) {
+        console.error('Error checking authenticators:', error);
+        showNotification('Error checking account status. Please try again.', 'error');
+      }
+    });
+  }
+
+  if (cancelDeleteAccountFromAccount) {
+    cancelDeleteAccountFromAccount.addEventListener('click', () => {
+      deleteAccountModal.style.display = 'none';
+    });
+  }
+
+  if (confirmDeleteAccountFromAccount) {
+    confirmDeleteAccountFromAccount.addEventListener('click', async () => {
+      try {
+        if (!currentUser) {
+          showNotification('Session expired. Please login again.', 'error');
+          deleteAccountModal.style.display = 'none';
+          return;
+        }
+
+        // Show loading state
+        confirmDeleteAccountFromAccount.disabled = true;
+        confirmDeleteAccountFromAccount.textContent = 'Deleting...';
+
+        // Delete all deleted_authenticators for this user
+        const deletedAuthSnapshot = await db.collection('deleted_authenticators')
+          .where('uid', '==', currentUser.uid)
+          .get();
+
+        const deleteBatch = db.batch();
+        deletedAuthSnapshot.forEach(doc => {
+          deleteBatch.delete(doc.ref);
+        });
+        await deleteBatch.commit();
+
+        // Delete the user account from Firebase Auth
+        await currentUser.delete();
+
+        // Update modal to success message
+        deleteAccountMessage.textContent = 'Your account has been deleted successfully!';
+        confirmDeleteAccountFromAccount.style.display = 'none';
+        cancelDeleteAccountFromAccount.textContent = 'OK';
+        cancelDeleteAccountFromAccount.classList.remove('btn-secondary');
+        cancelDeleteAccountFromAccount.classList.add('btn-primary');
+
+        // Redirect to login after clicking OK
+        cancelDeleteAccountFromAccount.onclick = () => {
+          window.location.href = 'login.html';
+        };
+
+      } catch (error) {
+        console.error('Error deleting account:', error);
+        
+        // Reset button state
+        confirmDeleteAccountFromAccount.disabled = false;
+        confirmDeleteAccountFromAccount.textContent = 'Yes, Delete';
+        
+        if (error.code === 'auth/requires-recent-login') {
+          showNotification('For security, please logout and login again before deleting your account.', 'error');
+          deleteAccountModal.style.display = 'none';
+        } else {
+          showNotification('Error deleting account: ' + error.message, 'error');
+        }
+      }
+    });
+  }
 
   waitForAuth((user) => {
     if (!user) {
