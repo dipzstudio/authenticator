@@ -21,14 +21,14 @@ export async function onRequestPost(context) {
   try {
     // Parse request body
     const body = await context.request.json();
-    const { type, title, message, email, name } = body;
+    const { type, title, message, email, name, submittedAt, ipAddress, city, country } = body;
 
     // Validation
-    if (!type || !title || !message) {
+    if (!message) {
       return new Response(
         JSON.stringify({ 
           success: false, 
-          error: 'Missing required fields' 
+          error: 'Message is required' 
         }),
         { 
           status: 400, 
@@ -44,8 +44,12 @@ export async function onRequestPost(context) {
     const RECIPIENT_EMAIL = context.env.RECIPIENT_EMAIL; // Your admin email
     const NOREPLY_EMAIL = context.env.NOREPLY_EMAIL || 'noreply-auth@underjoy.in'; // Auto-reply sender
 
+    // Use user's email and name, with fallbacks
+    const userName = name || 'Anonymous User';
+    const userEmail = email || 'anonymous@underjoy.in';
+
     // Prepare email content for ADMIN
-    const subject = `[${type.toUpperCase()}] ${title}`;
+    const subject = `[${type.toUpperCase()}] from ${userName}`;
     const htmlContent = `
       <html>
         <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
@@ -54,19 +58,18 @@ export async function onRequestPost(context) {
               ${type === 'feedback' ? '💬 New Feedback' : '🆘 Support Request'}
             </h2>
             
-            <div style="background: #f8f9fa; padding: 15px; border-radius: 5px; margin: 20px 0;">
-              <p style="margin: 5px 0;"><strong>Title:</strong> ${title}</p>
-              ${name ? `<p style="margin: 5px 0;"><strong>Name:</strong> ${name}</p>` : ''}
-              ${email ? `<p style="margin: 5px 0;"><strong>Email:</strong> ${email}</p>` : ''}
-              <p style="margin: 5px 0;"><strong>Type:</strong> ${type}</p>
-              <p style="margin: 5px 0;"><strong>Submitted:</strong> ${new Date().toLocaleString()}</p>
-            </div>
-            
             <div style="margin: 20px 0;">
               <h3 style="color: #555;">Message:</h3>
-              <div style="background: #fff; padding: 15px; border-left: 4px solid #6366F1; white-space: pre-wrap;">
+              <div style="background: #f8f9fa; padding: 15px; border-left: 4px solid #6366F1; white-space: pre-wrap;">
 ${message}
               </div>
+            </div>
+            
+            <div style="background: #fff; padding: 15px; border-radius: 5px; margin: 20px 0; border: 1px solid #e5e7eb;">
+              <p style="margin: 5px 0;"><strong>Submitted:</strong> ${submittedAt || new Date().toLocaleString()}</p>
+              ${ipAddress ? `<p style="margin: 5px 0;"><strong>IP Address:</strong> ${ipAddress}</p>` : ''}
+              ${city && country ? `<p style="margin: 5px 0;"><strong>Location:</strong> ${city}, ${country}</p>` : ''}
+              <p style="margin: 5px 0;"><strong>User:</strong> ${userName} ${email ? `(${email})` : ''}</p>
             </div>
             
             <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #ddd; font-size: 12px; color: #666;">
@@ -81,48 +84,44 @@ ${message}
     const textContent = `
 ${type === 'feedback' ? 'NEW FEEDBACK' : 'SUPPORT REQUEST'}
 
-Title: ${title}
-${name ? `Name: ${name}` : ''}
-${email ? `Email: ${email}` : ''}
-Type: ${type}
-Submitted: ${new Date().toLocaleString()}
-
 Message:
 ${message}
+
+---
+
+Submitted: ${submittedAt || new Date().toLocaleString()}
+${ipAddress ? `IP Address: ${ipAddress}` : ''}
+${city && country ? `Location: ${city}, ${country}` : ''}
+User: ${userName} ${email ? `(${email})` : ''}
 
 ---
 This ${type} was submitted via UnderJoy Authenticator
 ${email ? `You can reply to: ${email}` : ''}
     `.trim();
 
-    // Determine sender info for admin notification
-    // IMPORTANT: Admin should receive email FROM user (so they can reply)
-    const adminSenderEmail = email || 'user@underjoy.in'; // User's email or default
-    const adminSenderName = name || 'UnderJoy User';
-
     // Try Brevo first - Send to admin
+    // IMPORTANT: Email FROM user so admin can reply directly
     let result = await sendViaBrevo(
       BREVO_API_KEY,
       RECIPIENT_EMAIL,
       subject,
       htmlContent,
       textContent,
-      adminSenderEmail,
-      adminSenderName,
+      userEmail,
+      userName,
       email // replyTo - ensures admin can reply even if sender is default
     );
 
     if (result.success) {
       // Send acknowledgment email to user (if email provided)
-      if (email) {
+      if (email && email !== 'anonymous@underjoy.in') {
         await sendAcknowledgmentEmail(
           BREVO_API_KEY,
           SENDPULSE_ID,
           SENDPULSE_SECRET,
           email,
-          name,
+          userName,
           type,
-          title,
           message,
           NOREPLY_EMAIL
         );
@@ -150,22 +149,21 @@ ${email ? `You can reply to: ${email}` : ''}
       RECIPIENT_EMAIL,
       subject,
       htmlContent,
-      adminSenderEmail,
-      adminSenderName,
+      userEmail,
+      userName,
       email // replyTo
     );
 
     if (result.success) {
       // Send acknowledgment email to user (if email provided)
-      if (email) {
+      if (email && email !== 'anonymous@underjoy.in') {
         await sendAcknowledgmentEmail(
           BREVO_API_KEY,
           SENDPULSE_ID,
           SENDPULSE_SECRET,
           email,
-          name,
+          userName,
           type,
-          title,
           message,
           NOREPLY_EMAIL
         );
@@ -238,7 +236,7 @@ async function sendViaBrevo(apiKey, recipientEmail, subject, htmlContent, textCo
     };
 
     // Add replyTo if provided (so admin can reply to user)
-    if (replyTo) {
+    if (replyTo && replyTo !== 'anonymous@underjoy.in') {
       emailPayload.replyTo = {
         email: replyTo,
         name: senderName
@@ -322,7 +320,7 @@ async function sendViaSendPulse(clientId, clientSecret, recipientEmail, subject,
     };
 
     // Add reply_to if provided
-    if (replyTo) {
+    if (replyTo && replyTo !== 'anonymous@underjoy.in') {
       emailPayload.email.reply_to = {
         email: replyTo,
         name: senderName
@@ -358,7 +356,7 @@ async function sendViaSendPulse(clientId, clientSecret, recipientEmail, subject,
 /**
  * Send acknowledgment email to user
  */
-async function sendAcknowledgmentEmail(brevoApiKey, sendpulseId, sendpulseSecret, userEmail, userName, type, title, message, noreplyEmail) {
+async function sendAcknowledgmentEmail(brevoApiKey, sendpulseId, sendpulseSecret, userEmail, userName, type, message, noreplyEmail) {
   const isSupport = type === 'support';
   const subject = isSupport 
     ? '✓ Support Request Received - UnderJoy Authenticator'
@@ -374,14 +372,12 @@ async function sendAcknowledgmentEmail(brevoApiKey, sendpulseId, sendpulseSecret
             </h2>
           </div>
           
-          <p style="font-size: 16px;">Hello ${userName || 'there'},</p>
+          <p style="font-size: 16px;">Hello ${userName},</p>
           
           <p>Thank you for contacting us! We have successfully received your ${isSupport ? 'support request' : 'feedback'}.</p>
           
           <div style="background: #f8f9fa; padding: 15px; border-radius: 5px; margin: 20px 0; border-left: 4px solid #6366F1;">
             <p style="margin: 5px 0; color: #666; font-size: 14px;"><strong>What you submitted:</strong></p>
-            <p style="margin: 10px 0 5px 0;"><strong>Title:</strong> ${title}</p>
-            <p style="margin: 5px 0;"><strong>Message:</strong></p>
             <div style="background: white; padding: 10px; border-radius: 4px; margin-top: 5px; font-size: 14px; white-space: pre-wrap;">
 ${message}
             </div>
@@ -390,7 +386,7 @@ ${message}
           ${isSupport ? `
           <div style="background: #e0f2fe; padding: 15px; border-radius: 5px; margin: 20px 0; border-left: 4px solid #0ea5e9;">
             <p style="margin: 0; color: #0c4a6e;">
-              <strong>📧 Next Steps:</strong><br>
+              <strong>🔧 Next Steps:</strong><br>
               Our support team is reviewing your request. You will receive a response from us at this email address within 24-48 hours.
             </p>
           </div>
@@ -422,13 +418,11 @@ ${message}
   const textContent = `
 ${isSupport ? 'SUPPORT REQUEST ACKNOWLEDGMENT' : 'FEEDBACK ACKNOWLEDGMENT'}
 
-Hello ${userName || 'there'},
+Hello ${userName},
 
 Thank you for contacting us! We have successfully received your ${isSupport ? 'support request' : 'feedback'}.
 
 WHAT YOU SUBMITTED:
-Title: ${title}
-Message:
 ${message}
 
 ${isSupport ? `NEXT STEPS:
