@@ -1,4 +1,8 @@
 let auth, db;
+const APP_CACHE_KEY = 'uj_app_cache';
+const AUTH_CACHE_KEY = 'uj_auth_cache';
+let firebaseConnected = false;
+let firebaseConnectionTimer = null;
 
 async function initializeFirebase() {
   try {
@@ -10,30 +14,26 @@ async function initializeFirebase() {
       auth = firebase.auth();
       db = firebase.firestore();
       console.log('Firebase initialized');
+      
+      // ✅ Enable offline persistence AFTER db is initialized
+      await db.enablePersistence()
+        .catch((err) => {
+          console.log('Offline persistence error:', err.code);
+        });
+      
+      // ✅ Initialize app AFTER Firebase is ready
+      initializeApp();
+      
+    } else {
+      console.error('Failed to get Firebase config:', result.error);
     }
   } catch (error) {
-    console.error('Error:', error);
+    console.error('Error initializing Firebase:', error);
   }
 }
 
+// Start Firebase initialization
 initializeFirebase();
-
-const APP_CACHE_KEY = 'uj_app_cache';
-const AUTH_CACHE_KEY = 'uj_auth_cache';
-let firebaseConnected = false;
-let firebaseConnectionTimer = null;
-
-// Enable offline persistence
-db.enablePersistence()
-  .catch((err) => {
-    console.log('Offline persistence error:', err.code);
-  });
-
-if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', initializeApp);
-} else {
-  initializeApp();
-}
 
 function initializeApp() {	
 
