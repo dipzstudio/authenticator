@@ -329,17 +329,17 @@
         </div>
     </div>
 
-	<!-- Logout Confirmation Modal -->
-    <div id="logoutModal" class="modal">
-        <div class="modal-content modal-small">
-            <h3>Confirm Signout</h3>
-            <p>Are you sure you want to signout?</p>
-            <div class="modal-actions">
-                <button id="confirmLogout" class="btn-primary">Yes</button>
-                <button id="cancelLogout" class="btn-secondary">No</button>
-            </div>
-        </div>
-    </div>
+	<!-- Delete Account Confirmation Modal -->
+	<div id="deleteAccountModal" class="modal">
+	    <div class="modal-content modal-small">
+	        <h3>Delete Account</h3>
+	        <p id="deleteAccountMessage">Are you sure you want to delete your account? This action cannot be undone. All your data will be permanently deleted.</p>
+	        <div class="modal-actions">
+	            <button id="confirmDeleteAccountFromAccount" class="btn-primary">Yes, Delete</button>
+	            <button id="cancelDeleteAccountFromAccount" class="btn-secondary">Cancel</button>
+	        </div>
+	    </div>
+	</div>
 
     <!-- Firebase -->
     <script src="https://www.gstatic.com/firebasejs/12.7.0/firebase-app-compat.js"></script>
