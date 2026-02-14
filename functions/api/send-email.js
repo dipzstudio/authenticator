@@ -41,9 +41,10 @@ export async function onRequestPost(context) {
     const BREVO_API_KEY = context.env.BREVO_API_KEY;
     const SENDPULSE_ID = context.env.SENDPULSE_ID;
     const SENDPULSE_SECRET = context.env.SENDPULSE_SECRET;
-    const RECIPIENT_EMAIL = context.env.RECIPIENT_EMAIL; // Your email
+    const RECIPIENT_EMAIL = context.env.RECIPIENT_EMAIL; // Your admin email
+    const NOREPLY_EMAIL = context.env.NOREPLY_EMAIL || 'noreply-auth@underjoy.in'; // Auto-reply sender
 
-    // Prepare email content
+    // Prepare email content for ADMIN
     const subject = `[${type.toUpperCase()}] ${title}`;
     const htmlContent = `
       <html>
@@ -70,6 +71,7 @@ ${message}
             
             <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #ddd; font-size: 12px; color: #666;">
               <p>This ${type} was submitted via UnderJoy Authenticator</p>
+              ${email ? `<p>You can reply directly to this email to respond to the user at ${email}</p>` : ''}
             </div>
           </div>
         </body>
@@ -90,20 +92,40 @@ ${message}
 
 ---
 This ${type} was submitted via UnderJoy Authenticator
+${email ? `You can reply to: ${email}` : ''}
     `.trim();
 
-    // Try Brevo first
+    // Determine sender info (use user's email/name if provided)
+    const senderEmail = email || NOREPLY_EMAIL;
+    const senderName = name || 'UnderJoy User';
+
+    // Try Brevo first - Send to admin
     let result = await sendViaBrevo(
       BREVO_API_KEY,
       RECIPIENT_EMAIL,
       subject,
       htmlContent,
       textContent,
-      email || 'noreply@underjoy.com',
-      name || 'UnderJoy User'
+      senderEmail,
+      senderName
     );
 
     if (result.success) {
+      // Send acknowledgment email to user (if email provided)
+      if (email) {
+        await sendAcknowledgmentEmail(
+          BREVO_API_KEY,
+          SENDPULSE_ID,
+          SENDPULSE_SECRET,
+          email,
+          name,
+          type,
+          title,
+          message,
+          NOREPLY_EMAIL
+        );
+      }
+      
       return new Response(
         JSON.stringify({ 
           success: true, 
@@ -126,11 +148,26 @@ This ${type} was submitted via UnderJoy Authenticator
       RECIPIENT_EMAIL,
       subject,
       htmlContent,
-      email || 'noreply@underjoy.com',
-      name || 'UnderJoy User'
+      senderEmail,
+      senderName
     );
 
     if (result.success) {
+      // Send acknowledgment email to user (if email provided)
+      if (email) {
+        await sendAcknowledgmentEmail(
+          BREVO_API_KEY,
+          SENDPULSE_ID,
+          SENDPULSE_SECRET,
+          email,
+          name,
+          type,
+          title,
+          message,
+          NOREPLY_EMAIL
+        );
+      }
+      
       return new Response(
         JSON.stringify({ 
           success: true, 
@@ -292,4 +329,129 @@ async function sendViaSendPulse(clientId, clientSecret, recipientEmail, subject,
   } catch (error) {
     return { success: false, error: error.message };
   }
+}
+
+/**
+ * Send acknowledgment email to user
+ */
+async function sendAcknowledgmentEmail(brevoApiKey, sendpulseId, sendpulseSecret, userEmail, userName, type, title, message, noreplyEmail) {
+  const isSupport = type === 'support';
+  const subject = isSupport 
+    ? '✓ Support Request Received - UnderJoy Authenticator'
+    : '✓ Feedback Received - UnderJoy Authenticator';
+  
+  const htmlContent = `
+    <html>
+      <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+        <div style="max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #ddd; border-radius: 8px;">
+          <div style="background: linear-gradient(135deg, #6366F1 0%, #8B5CF6 100%); padding: 20px; border-radius: 8px 8px 0 0; margin: -20px -20px 20px -20px;">
+            <h2 style="color: white; margin: 0; text-align: center;">
+              ${isSupport ? '🆘 Support Request Acknowledgment' : '💬 Feedback Acknowledgment'}
+            </h2>
+          </div>
+          
+          <p style="font-size: 16px;">Hello ${userName || 'there'},</p>
+          
+          <p>Thank you for contacting us! We have successfully received your ${isSupport ? 'support request' : 'feedback'}.</p>
+          
+          <div style="background: #f8f9fa; padding: 15px; border-radius: 5px; margin: 20px 0; border-left: 4px solid #6366F1;">
+            <p style="margin: 5px 0; color: #666; font-size: 14px;"><strong>What you submitted:</strong></p>
+            <p style="margin: 10px 0 5px 0;"><strong>Title:</strong> ${title}</p>
+            <p style="margin: 5px 0;"><strong>Message:</strong></p>
+            <div style="background: white; padding: 10px; border-radius: 4px; margin-top: 5px; font-size: 14px; white-space: pre-wrap;">
+${message}
+            </div>
+          </div>
+          
+          ${isSupport ? `
+          <div style="background: #e0f2fe; padding: 15px; border-radius: 5px; margin: 20px 0; border-left: 4px solid #0ea5e9;">
+            <p style="margin: 0; color: #0c4a6e;">
+              <strong>📧 Next Steps:</strong><br>
+              Our support team is reviewing your request. You will receive a response from us at this email address within 24-48 hours.
+            </p>
+          </div>
+          ` : `
+          <div style="background: #dbeafe; padding: 15px; border-radius: 5px; margin: 20px 0; border-left: 4px solid #3b82f6;">
+            <p style="margin: 0; color: #1e3a8a;">
+              <strong>💙 Thank You!</strong><br>
+              Your feedback helps us make UnderJoy Authenticator better for everyone. We carefully review all feedback and use it to improve our app.
+            </p>
+          </div>
+          `}
+          
+          <div style="margin-top: 30px; padding: 15px; background: #fff3cd; border-radius: 5px; border-left: 4px solid #ffc107;">
+            <p style="margin: 0; color: #856404; font-size: 14px;">
+              <strong>⚠️ Important:</strong> This is an automated acknowledgment email. Please do not reply to this email. ${isSupport ? 'You will receive a response from our support team separately.' : ''}
+            </p>
+          </div>
+          
+          <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #ddd; text-align: center; color: #666; font-size: 12px;">
+            <p style="margin: 5px 0;">UnderJoy Authenticator</p>
+            <p style="margin: 5px 0;">Secure • Simple • Reliable</p>
+            <p style="margin: 5px 0; color: #999;">This email was sent to ${userEmail}</p>
+          </div>
+        </div>
+      </body>
+    </html>
+  `;
+
+  const textContent = `
+${isSupport ? 'SUPPORT REQUEST ACKNOWLEDGMENT' : 'FEEDBACK ACKNOWLEDGMENT'}
+
+Hello ${userName || 'there'},
+
+Thank you for contacting us! We have successfully received your ${isSupport ? 'support request' : 'feedback'}.
+
+WHAT YOU SUBMITTED:
+Title: ${title}
+Message:
+${message}
+
+${isSupport ? `NEXT STEPS:
+Our support team is reviewing your request. You will receive a response from us at this email address within 24-48 hours.` : `THANK YOU!
+Your feedback helps us make UnderJoy Authenticator better for everyone. We carefully review all feedback and use it to improve our app.`}
+
+IMPORTANT: This is an automated acknowledgment email. Please do not reply to this email. ${isSupport ? 'You will receive a response from our support team separately.' : ''}
+
+---
+UnderJoy Authenticator
+Secure • Simple • Reliable
+This email was sent to ${userEmail}
+  `.trim();
+
+  // Try Brevo first for acknowledgment
+  let result = await sendViaBrevo(
+    brevoApiKey,
+    userEmail,
+    subject,
+    htmlContent,
+    textContent,
+    noreplyEmail,
+    'UnderJoy Authenticator'
+  );
+
+  if (result.success) {
+    console.log('Acknowledgment email sent via Brevo to:', userEmail);
+    return { success: true };
+  }
+
+  // Fallback to SendPulse for acknowledgment
+  console.log('Brevo failed for acknowledgment, trying SendPulse...');
+  result = await sendViaSendPulse(
+    sendpulseId,
+    sendpulseSecret,
+    userEmail,
+    subject,
+    htmlContent,
+    noreplyEmail,
+    'UnderJoy Authenticator'
+  );
+
+  if (result.success) {
+    console.log('Acknowledgment email sent via SendPulse to:', userEmail);
+    return { success: true };
+  }
+
+  console.error('Failed to send acknowledgment email:', result.error);
+  return { success: false, error: result.error };
 }
