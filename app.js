@@ -1081,9 +1081,11 @@ function loadFromCache() {
       return true;
     } catch (error) {
       console.error('Cache parse error:', error);
+		renderAuthenticators();
       return false;
     }
   }
+	renderAuthenticators();
   return false;
 }
 
