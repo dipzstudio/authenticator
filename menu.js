@@ -1,19 +1,22 @@
-const firebaseConfig = {
-  apiKey: "AIzaSyCC6NzVYzBGRueNlQiOfN55xxLhpu7B8D4",
-  authDomain: "authenticator-9c431.firebaseapp.com",
-  projectId: "authenticator-9c431",
-  storageBucket: "authenticator-9c431.firebasestorage.app",
-  messagingSenderId: "779961497127",
-  appId: "1:779961497127:web:87610389beb7cb9415c002",
-  measurementId: "G-JJB538N8CQ"
-};
+let auth, db;
 
-if (!firebase.apps.length) {
-  firebase.initializeApp(firebaseConfig);
+async function initializeFirebase() {
+  try {
+    const response = await fetch('/api/firebase-config');
+    const result = await response.json();
+    
+    if (result.success) {
+      firebase.initializeApp(result.config);
+      auth = firebase.auth();
+      db = firebase.firestore();
+      console.log('Firebase initialized');
+    }
+  } catch (error) {
+    console.error('Error:', error);
+  }
 }
 
-const auth = firebase.auth();
-const db = firebase.firestore();
+initializeFirebase();
 
 // Updated Firebase persistence - no deprecation warning
 try {
