@@ -49,7 +49,7 @@ export async function onRequestPost(context) {
     const userEmail = email || 'anonymous@underjoy.in';
 
     // Prepare email content for ADMIN
-    const subject = `[${type.toUpperCase()}] from ${userName}`;
+    const subject = `[${type.toUpperCase()}] ${title}`;
     const htmlContent = `
       <html>
         <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
