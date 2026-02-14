@@ -406,46 +406,64 @@
 
         // Submit support request
         document.getElementById('submitContactBtn').addEventListener('click', async function() {
-            const subject = document.getElementById('contactSubject').value.trim();
-            const description = document.getElementById('contactDescription').value.trim();
-            const errorDiv = document.getElementById('contactError');
-            const submitBtn = this;
-            
-            // Clear previous errors
-            errorDiv.textContent = '';
-            errorDiv.style.display = 'none';
-            
-            // Validation
-            if (!subject) {
-                errorDiv.textContent = 'Please enter a subject';
-                errorDiv.style.display = 'block';
-                return;
-            }
-            
-            if (!description) {
-                errorDiv.textContent = 'Please describe your issue';
-                errorDiv.style.display = 'block';
-                return;
-            }
-            
-            // Disable button and show loading
-            submitBtn.disabled = true;
-            submitBtn.textContent = 'Sending...';
-            
-            try {
-                const response = await fetch('/api/send-email', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        type: 'support',
-                        title: subject,
-                        message: description,
-                        email: localStorage.getItem('userEmail') || '',
-                        name: localStorage.getItem('userName') || ''
-                    })
-                });
+			const subject = document.getElementById('contactSubject').value.trim();
+			const description = document.getElementById('contactDescription').value.trim();
+			const errorDiv = document.getElementById('contactError');
+			const submitBtn = this;
+			
+			// Clear previous errors
+			errorDiv.textContent = '';
+			errorDiv.style.display = 'none';
+			
+			// Validation
+			if (!subject) {
+				errorDiv.textContent = 'Please enter a subject';
+				errorDiv.style.display = 'block';
+				return;
+			}
+			
+			if (!description) {
+				errorDiv.textContent = 'Please describe your issue';
+				errorDiv.style.display = 'block';
+				return;
+			}
+			
+			const wordCount = description.trim().split(/\s+/).length;
+			if (wordCount < 5) {
+				errorDiv.textContent = 'Please provide at least 5 words in your description';
+				errorDiv.style.display = 'block';
+				return;
+			}
+			
+			// Disable button and show loading
+			submitBtn.disabled = true;
+			submitBtn.textContent = 'Sending...';
+			
+			try {
+				// Get user location data
+				const locationData = await getUserLocationData();
+				
+				const response = await fetch('/api/send-email', {
+					method: 'POST',
+					headers: {
+						'Content-Type': 'application/json'
+					},
+					body: JSON.stringify({
+						type: 'support',
+						title: subject,
+						message: description,
+						email: localStorage.getItem('userEmail') || '',
+						name: localStorage.getItem('userName') || '',
+						submittedAt: new Date().toLocaleString('en-US', { 
+							dateStyle: 'medium', 
+							timeStyle: 'medium',
+							hour12: true 
+						}),
+						ipAddress: locationData.ipAddress,
+						city: locationData.city,
+						country: locationData.country
+					})
+				});
                 
                 const result = await response.json();
                 
@@ -485,6 +503,27 @@
             document.getElementById('contactForm').style.display = 'none';
             document.getElementById('contactUsBtn').innerHTML = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align: -2px;"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path></svg> Contact Us';
         });
+		
+		async function getUserLocationData() {
+			try {
+				// Alternative: Using ip-api.com (no API key needed, free for non-commercial)
+				const response = await fetch('http://ip-api.com/json/');
+				const data = await response.json();
+				
+				return {
+					ipAddress: data.query || 'Unknown',
+					city: data.city || 'Unknown',
+					country: data.country || 'Unknown'
+				};
+			} catch (error) {
+				console.error('Error fetching location data:', error);
+				return {
+					ipAddress: 'Unknown',
+					city: 'Unknown',
+					country: 'Unknown'
+				};
+			}
+		}
         
         // Notification function
         function showNotification(message, type) {
@@ -503,19 +542,19 @@
 		  
 		  // Remove after 2.5 seconds
 		  setTimeout(() => {
-		    messageEl.style.opacity = '0';
-		    messageEl.style.transform = 'translateY(-20px)';
-		    
-		    setTimeout(() => {
-		      if (messageEl.parentNode) {
-		        messageEl.remove();
-		      }
-		      
-		      // Hide container if no notifications left
-		      if (container.children.length === 0) {
-		        container.style.display = 'none';
-		      }
-		    }, 300);
+			messageEl.style.opacity = '0';
+			messageEl.style.transform = 'translateY(-20px)';
+			
+			setTimeout(() => {
+			  if (messageEl.parentNode) {
+				messageEl.remove();
+			  }
+			  
+			  // Hide container if no notifications left
+			  if (container.children.length === 0) {
+				container.style.display = 'none';
+			  }
+			}, 300);
 		  }, 2500);
 		}
     </script>
