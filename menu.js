@@ -31,6 +31,14 @@ async function initializeFirebase() {
 // Start Firebase initialization
 initializeFirebase();
 
+function waitForAuth(callback) {
+  if (auth) {
+    auth.onAuthStateChanged(callback);
+  } else {
+    setTimeout(() => waitForAuth(callback), 100);
+  }
+}
+
 // Cache keys
 const USER_CACHE_KEY = 'uj_user_cache';
 const APP_CACHE_KEY = 'uj_app_cache';
@@ -416,7 +424,7 @@ if (currentPage === 'account') {
 	  }
 	}
 
-  auth.onAuthStateChanged((user) => {
+  waitForAuth((user) => {
     if (!user) {
       window.location.href = 'login.html';
       return;
@@ -599,7 +607,7 @@ if (currentPage === 'bin') {
   // Load from cache first
   loadBinFromCache();
 
-  auth.onAuthStateChanged((user) => {
+  waitForAuth((user) => {
     if (!user) {
       window.location.href = 'login.html';
       return;
@@ -1072,7 +1080,7 @@ if (currentPage === 'import') {
     }
   }
 
-  auth.onAuthStateChanged((user) => {
+  waitForAuth((user) => {
     if (!user) {
       window.location.href = 'login.html';
       return;
@@ -1431,7 +1439,7 @@ if (currentPage === 'export') {
 
   loadExportFromCache();
 
-  auth.onAuthStateChanged((user) => {
+  waitForAuth((user) => {
     if (!user) {
       window.location.href = 'login.html';
       return;
@@ -1532,7 +1540,7 @@ if (currentPage === 'support') {
     });
   });
 
-  auth.onAuthStateChanged((user) => {
+  waitForAuth((user) => {
     if (!user) {
       window.location.href = 'login.html';
       return;
@@ -1553,7 +1561,7 @@ if (currentPage === 'support') {
 
 // FEEDBACK PAGE
 if (currentPage === 'feedback') {
-  auth.onAuthStateChanged((user) => {
+  waitForAuth((user) => {
     if (!user) {
       window.location.href = 'login.html';
       return;
@@ -1574,7 +1582,7 @@ if (currentPage === 'feedback') {
 
 // Common auth state for other pages
 if (!['account', 'bin', 'import', 'export', 'support', 'feedback'].includes(currentPage)) {
-  auth.onAuthStateChanged((user) => {
+  waitForAuth((user) => {
     if (!user && currentPage !== 'login') {
       window.location.href = 'login.html';
       return;
