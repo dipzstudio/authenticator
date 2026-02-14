@@ -11,20 +11,20 @@ async function initializeFirebase() {
       db = firebase.firestore();
       console.log('Firebase initialized');
       
-      // ✅ Enable offline persistence AFTER db is initialized
-      await db.enablePersistence()
-        .catch((err) => {
-          console.log('Offline persistence error:', err.code);
-        });
+      // ✅ Move db.enablePersistence() HERE
+      await db.enablePersistence({ synchronizeTabs: true }).catch((err) => {
+        if (err.code === 'failed-precondition') {
+          console.log('Persistence: Multiple tabs open');
+        } else if (err.code === 'unimplemented') {
+          console.log('Persistence not available in this browser');
+        }
+      });
       
-      // ✅ Initialize app AFTER Firebase is ready
-      initializeApp();
-      
-    } else {
-      console.error('Failed to get Firebase config:', result.error);
+      // ✅ Initialize menu page AFTER Firebase is ready
+      initializeMenuPage();
     }
   } catch (error) {
-    console.error('Error initializing Firebase:', error);
+    console.error('Error:', error);
   }
 }
 
