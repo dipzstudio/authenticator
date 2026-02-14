@@ -1459,13 +1459,6 @@ if (currentPage === 'support') {
   const faqSearchInput = document.getElementById('faqSearchInput');
   const faqClearSearch = document.getElementById('faqClearSearch');
   const faqNoResults = document.getElementById('faqNoResults');
-  const contactUsBtn = document.getElementById('contactUsBtn');
-  const contactForm = document.getElementById('contactForm');
-  const cancelContactBtn = document.getElementById('cancelContactBtn');
-  const submitContactBtn = document.getElementById('submitContactBtn');
-  const contactSubject = document.getElementById('contactSubject');
-  const contactDescription = document.getElementById('contactDescription');
-  const contactError = document.getElementById('contactError');
 
   if (faqSearchInput) {
     faqSearchInput.addEventListener('input', (e) => {
@@ -1536,71 +1529,6 @@ if (currentPage === 'support') {
     });
   });
 
-  if (contactUsBtn) {
-    contactUsBtn.addEventListener('click', () => {
-      contactForm.style.display = 'block';
-      contactUsBtn.style.display = 'none';
-      contactError.textContent = '';
-      contactSubject.value = '';
-      contactDescription.value = '';
-    });
-  }
-
-  if (cancelContactBtn) {
-    cancelContactBtn.addEventListener('click', () => {
-      contactForm.style.display = 'none';
-      contactUsBtn.style.display = 'block';
-      contactError.textContent = '';
-      contactSubject.value = '';
-      contactDescription.value = '';
-    });
-  }
-
-  if (submitContactBtn) {
-    submitContactBtn.addEventListener('click', async () => {
-      const subject = contactSubject.value.trim();
-      const description = contactDescription.value.trim();
-      
-      if (!subject) {
-        contactError.textContent = 'Please enter a subject';
-        return;
-      }
-      
-      if (!description) {
-        contactError.textContent = 'Please describe your issue';
-        return;
-      }
-      
-      if (description.length < 10) {
-        contactError.textContent = 'Please provide more details (at least 10 characters)';
-        return;
-      }
-      
-      try {
-        await db.collection('support_tickets').add({
-          uid: currentUser.uid,
-          userEmail: currentUser.email,
-          userName: currentUser.displayName || currentUser.email.split('@')[0],
-          subject: subject,
-          description: description,
-          status: 'pending',
-          createdAt: firebase.firestore.FieldValue.serverTimestamp()
-        });
-        
-        showNotification('Your issue has been submitted. You will receive the response in registered email', 'success');
-        
-        contactForm.style.display = 'none';
-        contactUsBtn.style.display = 'block';
-        contactError.textContent = '';
-        contactSubject.value = '';
-        contactDescription.value = '';
-      } catch (error) {
-        console.error('Error submitting support ticket:', error);
-        contactError.textContent = 'Failed to submit. Please try again.';
-      }
-    });
-  }
-
   auth.onAuthStateChanged((user) => {
     if (!user) {
       window.location.href = 'login.html';
@@ -1622,63 +1550,6 @@ if (currentPage === 'support') {
 
 // FEEDBACK PAGE
 if (currentPage === 'feedback') {
-  const feedbackTitle = document.getElementById('feedbackTitle');
-  const feedbackSummary = document.getElementById('feedbackSummary');
-  const submitFeedbackBtn = document.getElementById('submitFeedbackBtn');
-  const clearFeedbackBtn = document.getElementById('clearFeedbackBtn');
-  const feedbackError = document.getElementById('feedbackError');
-
-  if (submitFeedbackBtn) {
-    submitFeedbackBtn.addEventListener('click', async () => {
-      const title = feedbackTitle.value.trim();
-      const summary = feedbackSummary.value.trim();
-      
-      if (!title) {
-        feedbackError.textContent = 'Please enter a title';
-        return;
-      }
-      
-      if (!summary) {
-        feedbackError.textContent = 'Please provide feedback summary';
-        return;
-      }
-      
-      if (summary.length < 10) {
-        feedbackError.textContent = 'Please provide more details (at least 10 characters)';
-        return;
-      }
-      
-      try {
-        await db.collection('feedback').add({
-          uid: currentUser.uid,
-          userEmail: currentUser.email,
-          userName: currentUser.displayName || currentUser.email.split('@')[0],
-          title: title,
-          summary: summary,
-          createdAt: firebase.firestore.FieldValue.serverTimestamp()
-        });
-        
-        showNotification('Thank you! Your feedback has been submitted successfully', 'success');
-        
-        feedbackTitle.value = '';
-        feedbackSummary.value = '';
-        feedbackError.textContent = '';
-      } catch (error) {
-        console.error('Error submitting feedback:', error);
-        feedbackError.textContent = 'Failed to submit. Please try again.';
-      }
-    });
-  }
-
-  if (clearFeedbackBtn) {
-    clearFeedbackBtn.addEventListener('click', () => {
-      feedbackTitle.value = '';
-      feedbackSummary.value = '';
-      feedbackError.textContent = '';
-      showNotification('Form cleared', 'success');
-    });
-  }
-
   auth.onAuthStateChanged((user) => {
     if (!user) {
       window.location.href = 'login.html';
