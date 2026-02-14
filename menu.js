@@ -10,26 +10,26 @@ async function initializeFirebase() {
       auth = firebase.auth();
       db = firebase.firestore();
       console.log('Firebase initialized');
+      
+      // ✅ Enable offline persistence AFTER db is initialized
+      await db.enablePersistence()
+        .catch((err) => {
+          console.log('Offline persistence error:', err.code);
+        });
+      
+      // ✅ Initialize app AFTER Firebase is ready
+      initializeApp();
+      
+    } else {
+      console.error('Failed to get Firebase config:', result.error);
     }
   } catch (error) {
-    console.error('Error:', error);
+    console.error('Error initializing Firebase:', error);
   }
 }
 
+// Start Firebase initialization
 initializeFirebase();
-
-// Updated Firebase persistence - no deprecation warning
-try {
-  db.enablePersistence({ synchronizeTabs: true }).catch((err) => {
-    if (err.code === 'failed-precondition') {
-      console.log('Persistence: Multiple tabs open');
-    } else if (err.code === 'unimplemented') {
-      console.log('Persistence not available in this browser');
-    }
-  });
-} catch (err) {
-  console.log('Persistence error:', err.code);
-}
 
 // Cache keys
 const USER_CACHE_KEY = 'uj_user_cache';
