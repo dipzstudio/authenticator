@@ -204,6 +204,11 @@
 				Sign Out
 			  </button>
 			</div>
+			
+			<!-- Delete Account Link -->
+		  <div class="delete-account-link" style="text-align: center; margin-top: 16px;">
+			<a href="javascript:void(0)" id="deleteAccountLinkFromAccount" style="color: #ef4444; font-size: 14px; text-decoration: none;">Delete My Account</a>
+		  </div>
         </div>
 
         <!-- Fixed Bottom Button -->
@@ -312,6 +317,18 @@
         </div>
     </div>
 	
+	<!-- Logout Confirmation Modal -->
+    <div id="logoutModal" class="modal">
+        <div class="modal-content modal-small">
+            <h3>Confirm Signout</h3>
+            <p>Are you sure you want to signout?</p>
+            <div class="modal-actions">
+                <button id="confirmLogout" class="btn-primary">Yes</button>
+                <button id="cancelLogout" class="btn-secondary">No</button>
+            </div>
+        </div>
+    </div>
+
 	<!-- Logout Confirmation Modal -->
     <div id="logoutModal" class="modal">
         <div class="modal-content modal-small">
