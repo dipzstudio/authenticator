@@ -42,14 +42,14 @@ export async function onRequestPost(context) {
     const SENDPULSE_ID = context.env.SENDPULSE_ID;
     const SENDPULSE_SECRET = context.env.SENDPULSE_SECRET;
     const RECIPIENT_EMAIL = context.env.RECIPIENT_EMAIL; // Your admin email
-    const NOREPLY_EMAIL = context.env.NOREPLY_EMAIL || 'noreply-auth@underjoy.in'; // Auto-reply sender
+    const NOREPLY_EMAIL = context.env.NOREPLY_EMAIL || 'noreply-auth@underjoy.in'; // Sender email
 
     // Use user's email and name, with fallbacks
     const userName = name || 'Anonymous User';
-    const userEmail = email || 'anonymous@underjoy.in';
+    const userEmail = email || '';
 
     // Prepare email content for ADMIN
-    const subject = `[${type.toUpperCase()}] ${title}`;
+    const subject = title ? `[${type.toUpperCase()}] ${title}` : `[${type.toUpperCase()}] from ${userName}`;
     const htmlContent = `
       <html>
         <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
@@ -69,12 +69,12 @@ ${message}
               <p style="margin: 5px 0;"><strong>Submitted:</strong> ${submittedAt || new Date().toLocaleString()}</p>
               ${ipAddress ? `<p style="margin: 5px 0;"><strong>IP Address:</strong> ${ipAddress}</p>` : ''}
               ${city && country ? `<p style="margin: 5px 0;"><strong>Location:</strong> ${city}, ${country}</p>` : ''}
-              <p style="margin: 5px 0;"><strong>User:</strong> ${userName} ${email ? `(${email})` : ''}</p>
+              <p style="margin: 5px 0;"><strong>User:</strong> ${userName}${userEmail ? ` (${userEmail})` : ''}</p>
             </div>
             
             <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #ddd; font-size: 12px; color: #666;">
               <p>This ${type} was submitted via UnderJoy Authenticator</p>
-              ${email ? `<p>You can reply directly to this email to respond to the user at ${email}</p>` : ''}
+              ${userEmail ? `<p>You can reply directly to this email to respond to the user at ${userEmail}</p>` : ''}
             </div>
           </div>
         </body>
@@ -92,36 +92,37 @@ ${message}
 Submitted: ${submittedAt || new Date().toLocaleString()}
 ${ipAddress ? `IP Address: ${ipAddress}` : ''}
 ${city && country ? `Location: ${city}, ${country}` : ''}
-User: ${userName} ${email ? `(${email})` : ''}
+User: ${userName}${userEmail ? ` (${userEmail})` : ''}
 
 ---
 This ${type} was submitted via UnderJoy Authenticator
-${email ? `You can reply to: ${email}` : ''}
+${userEmail ? `You can reply to: ${userEmail}` : ''}
     `.trim();
 
     // Try Brevo first - Send to admin
-    // IMPORTANT: Email FROM user so admin can reply directly
+    // IMPORTANT: Use NOREPLY_EMAIL as sender (verified domain) with user email as replyTo
     let result = await sendViaBrevo(
       BREVO_API_KEY,
       RECIPIENT_EMAIL,
       subject,
       htmlContent,
       textContent,
-      userEmail,
-      userName,
-      email // replyTo - ensures admin can reply even if sender is default
+      NOREPLY_EMAIL,
+      `${userName} via UnderJoy`,
+      userEmail // replyTo - admin can reply directly to user
     );
 
     if (result.success) {
       // Send acknowledgment email to user (if email provided)
-      if (email && email !== 'anonymous@underjoy.in') {
+      if (userEmail) {
         await sendAcknowledgmentEmail(
           BREVO_API_KEY,
           SENDPULSE_ID,
           SENDPULSE_SECRET,
-          email,
+          userEmail,
           userName,
           type,
+          title,
           message,
           NOREPLY_EMAIL
         );
@@ -149,21 +150,22 @@ ${email ? `You can reply to: ${email}` : ''}
       RECIPIENT_EMAIL,
       subject,
       htmlContent,
-      userEmail,
-      userName,
-      email // replyTo
+      NOREPLY_EMAIL,
+      `${userName} via UnderJoy`,
+      userEmail // replyTo
     );
 
     if (result.success) {
       // Send acknowledgment email to user (if email provided)
-      if (email && email !== 'anonymous@underjoy.in') {
+      if (userEmail) {
         await sendAcknowledgmentEmail(
           BREVO_API_KEY,
           SENDPULSE_ID,
           SENDPULSE_SECRET,
-          email,
+          userEmail,
           userName,
           type,
+          title,
           message,
           NOREPLY_EMAIL
         );
@@ -236,7 +238,7 @@ async function sendViaBrevo(apiKey, recipientEmail, subject, htmlContent, textCo
     };
 
     // Add replyTo if provided (so admin can reply to user)
-    if (replyTo && replyTo !== 'anonymous@underjoy.in') {
+    if (replyTo) {
       emailPayload.replyTo = {
         email: replyTo,
         name: senderName
@@ -320,7 +322,7 @@ async function sendViaSendPulse(clientId, clientSecret, recipientEmail, subject,
     };
 
     // Add reply_to if provided
-    if (replyTo && replyTo !== 'anonymous@underjoy.in') {
+    if (replyTo) {
       emailPayload.email.reply_to = {
         email: replyTo,
         name: senderName
@@ -356,7 +358,7 @@ async function sendViaSendPulse(clientId, clientSecret, recipientEmail, subject,
 /**
  * Send acknowledgment email to user
  */
-async function sendAcknowledgmentEmail(brevoApiKey, sendpulseId, sendpulseSecret, userEmail, userName, type, message, noreplyEmail) {
+async function sendAcknowledgmentEmail(brevoApiKey, sendpulseId, sendpulseSecret, userEmail, userName, type, title, message, noreplyEmail) {
   const isSupport = type === 'support';
   const subject = isSupport 
     ? '✓ Support Request Received - UnderJoy Authenticator'
@@ -378,6 +380,8 @@ async function sendAcknowledgmentEmail(brevoApiKey, sendpulseId, sendpulseSecret
           
           <div style="background: #f8f9fa; padding: 15px; border-radius: 5px; margin: 20px 0; border-left: 4px solid #6366F1;">
             <p style="margin: 5px 0; color: #666; font-size: 14px;"><strong>What you submitted:</strong></p>
+            ${title ? `<p style="margin: 10px 0 5px 0;"><strong>Subject:</strong> ${title}</p>` : ''}
+            <p style="margin: 5px 0;"><strong>Message:</strong></p>
             <div style="background: white; padding: 10px; border-radius: 4px; margin-top: 5px; font-size: 14px; white-space: pre-wrap;">
 ${message}
             </div>
@@ -423,6 +427,8 @@ Hello ${userName},
 Thank you for contacting us! We have successfully received your ${isSupport ? 'support request' : 'feedback'}.
 
 WHAT YOU SUBMITTED:
+${title ? `Subject: ${title}` : ''}
+Message:
 ${message}
 
 ${isSupport ? `NEXT STEPS:
