@@ -11,14 +11,11 @@ async function initializeFirebase() {
       db = firebase.firestore();
       console.log('Firebase initialized');
       
-      // ✅ Move db.enablePersistence() HERE
-      await db.enablePersistence({ synchronizeTabs: true }).catch((err) => {
-        if (err.code === 'failed-precondition') {
-          console.log('Persistence: Multiple tabs open');
-        } else if (err.code === 'unimplemented') {
-          console.log('Persistence not available in this browser');
-        }
-      });
+      db.settings({
+		  cacheSizeBytes: firebase.firestore.CACHE_SIZE_UNLIMITED,
+		  experimentalForceLongPolling: false,
+		  experimentalAutoDetectLongPolling: true
+		});
       
       // ✅ Initialize menu page AFTER Firebase is ready
       initializeMenuPage();
