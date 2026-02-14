@@ -228,87 +228,88 @@
 	<!-- Feedback Handler -->
     <script>
         document.getElementById('submitFeedbackBtn').addEventListener('click', async function() {
-			const title = document.getElementById('feedbackTitle').value.trim();
-			const message = document.getElementById('feedbackSummary').value.trim();
-			const errorDiv = document.getElementById('feedbackError');
-			const submitBtn = this;
-			
-			// Clear previous errors
-			errorDiv.textContent = '';
-			errorDiv.style.display = 'none';
-			
-			// Validation
-			if (!title) {
-				errorDiv.textContent = 'Please enter a title';
-				errorDiv.style.display = 'block';
-				return;
-			}
-			
-			if (!message) {
-				errorDiv.textContent = 'Please enter your feedback';
-				errorDiv.style.display = 'block';
-				return;
-			}
-			
-			const wordCount = message.trim().split(/\s+/).length;
-			if (wordCount < 5) {
-				errorDiv.textContent = 'Please provide at least 5 words in your feedback';
-				errorDiv.style.display = 'block';
-				return;
-			}
-			
-			// Disable button and show loading
-			submitBtn.disabled = true;
-			submitBtn.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle></svg> Sending...';
-			
-			try {
-				// Get user location data
-				const locationData = await getUserLocationData();
-				
-				const response = await fetch('/api/send-email', {
-					method: 'POST',
-					headers: {
-						'Content-Type': 'application/json'
-					},
-					body: JSON.stringify({
-						type: 'feedback',
-						title: title,
-						message: message,
-						email: localStorage.getItem('userEmail') || '',
-						name: localStorage.getItem('userName') || '',
-						submittedAt: new Date().toLocaleString('en-US', { 
-							dateStyle: 'medium', 
-							timeStyle: 'medium',
-							hour12: true 
-						}),
-						ipAddress: locationData.ipAddress,
-						city: locationData.city,
-						country: locationData.country
-					})
-				});
-                
-                const result = await response.json();
-                
-                if (result.success) {
-                    // Show success message
-                    showNotification('Feedback submitted successfully! Thank you for your input.', 'success');
-                    
-                    // Clear form
-                    document.getElementById('feedbackTitle').value = '';
-                    document.getElementById('feedbackSummary').value = '';
-                } else {
-                    throw new Error(result.error || 'Failed to submit feedback');
-                }
-            } catch (error) {
-                console.error('Error submitting feedback:', error);
-                errorDiv.textContent = 'Failed to submit feedback. Please try again later.';
-                errorDiv.style.display = 'block';
-            } finally {
-                // Re-enable button
-                submitBtn.disabled = false;
-                submitBtn.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"></polyline></svg> Submit';
-            }
-        });
+		    const title = document.getElementById('feedbackTitle').value.trim();
+		    const message = document.getElementById('feedbackSummary').value.trim();
+		    const errorDiv = document.getElementById('feedbackError');
+		    const submitBtn = this;
+		    
+		    // Clear previous errors
+		    errorDiv.textContent = '';
+		    errorDiv.style.display = 'none';
+		    
+		    // Validation
+		    if (!title) {
+		        errorDiv.textContent = 'Please enter a title';
+		        errorDiv.style.display = 'block';
+		        return;
+		    }
+		    
+		    if (!message) {
+		        errorDiv.textContent = 'Please enter your feedback';
+		        errorDiv.style.display = 'block';
+		        return;
+		    }
+		    
+		    // Check minimum word count
+		    const wordCount = message.trim().split(/\s+/).length;
+		    if (wordCount < 5) {
+		        errorDiv.textContent = 'Please provide at least 5 words in your feedback';
+		        errorDiv.style.display = 'block';
+		        return;
+		    }
+		    
+		    // Disable button and show loading
+		    submitBtn.disabled = true;
+		    submitBtn.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle></svg> Sending...';
+		    
+		    try {
+		        // Get user location data
+		        const locationData = await getUserLocationData();
+		        
+		        const response = await fetch('/api/send-email', {
+		            method: 'POST',
+		            headers: {
+		                'Content-Type': 'application/json'
+		            },
+		            body: JSON.stringify({
+		                type: 'feedback',
+		                title: title,
+		                message: message,
+		                email: localStorage.getItem('userEmail') || '',
+		                name: localStorage.getItem('userName') || '',
+		                submittedAt: new Date().toLocaleString('en-US', { 
+		                    dateStyle: 'medium', 
+		                    timeStyle: 'medium',
+		                    hour12: true 
+		                }),
+		                ipAddress: locationData.ipAddress,
+		                city: locationData.city,
+		                country: locationData.country
+		            })
+		        });
+		        
+		        const result = await response.json();
+		        
+		        if (result.success) {
+		            // Show success message
+		            showNotification('Feedback submitted successfully! Thank you for your input.', 'success');
+		            
+		            // Clear form
+		            document.getElementById('feedbackTitle').value = '';
+		            document.getElementById('feedbackSummary').value = '';
+		        } else {
+		            throw new Error(result.error || 'Failed to submit feedback');
+		        }
+		    } catch (error) {
+		        console.error('Error submitting feedback:', error);
+		        errorDiv.textContent = 'Failed to submit feedback. Please try again later.';
+		        errorDiv.style.display = 'block';
+		    } finally {
+		        // Re-enable button
+		        submitBtn.disabled = false;
+		        submitBtn.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle></svg> Submit';
+		    }
+		});
         
         document.getElementById('clearFeedbackBtn').addEventListener('click', function() {
             document.getElementById('feedbackTitle').value = '';
@@ -318,24 +319,23 @@
         });
 		
 		async function getUserLocationData() {
-			try {
-				// Alternative: Using ip-api.com (no API key needed, free for non-commercial)
-				const response = await fetch('http://ip-api.com/json/');
-				const data = await response.json();
-				
-				return {
-					ipAddress: data.query || 'Unknown',
-					city: data.city || 'Unknown',
-					country: data.country || 'Unknown'
-				};
-			} catch (error) {
-				console.error('Error fetching location data:', error);
-				return {
-					ipAddress: 'Unknown',
-					city: 'Unknown',
-					country: 'Unknown'
-				};
-			}
+		    try {
+		        const response = await fetch('https://ipapi.co/json/');
+		        const data = await response.json();
+		        
+		        return {
+		            ipAddress: data.ip || 'Unknown',
+		            city: data.city || 'Unknown',
+		            country: data.country_name || 'Unknown'
+		        };
+		    } catch (error) {
+		        console.error('Error fetching location data:', error);
+		        return {
+		            ipAddress: 'Unknown',
+		            city: 'Unknown',
+		            country: 'Unknown'
+		        };
+		    }
 		}
         
         // Notification function
