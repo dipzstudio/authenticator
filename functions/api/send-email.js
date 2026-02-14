@@ -95,9 +95,10 @@ This ${type} was submitted via UnderJoy Authenticator
 ${email ? `You can reply to: ${email}` : ''}
     `.trim();
 
-    // Determine sender info (use user's email/name if provided)
-    const senderEmail = email || NOREPLY_EMAIL;
-    const senderName = name || 'UnderJoy User';
+    // Determine sender info for admin notification
+    // IMPORTANT: Admin should receive email FROM user (so they can reply)
+    const adminSenderEmail = email || 'user@underjoy.in'; // User's email or default
+    const adminSenderName = name || 'UnderJoy User';
 
     // Try Brevo first - Send to admin
     let result = await sendViaBrevo(
@@ -106,8 +107,9 @@ ${email ? `You can reply to: ${email}` : ''}
       subject,
       htmlContent,
       textContent,
-      senderEmail,
-      senderName
+      adminSenderEmail,
+      adminSenderName,
+      email // replyTo - ensures admin can reply even if sender is default
     );
 
     if (result.success) {
@@ -148,8 +150,9 @@ ${email ? `You can reply to: ${email}` : ''}
       RECIPIENT_EMAIL,
       subject,
       htmlContent,
-      senderEmail,
-      senderName
+      adminSenderEmail,
+      adminSenderName,
+      email // replyTo
     );
 
     if (result.success) {
@@ -212,12 +215,36 @@ ${email ? `You can reply to: ${email}` : ''}
 /**
  * Send email via Brevo (formerly Sendinblue)
  */
-async function sendViaBrevo(apiKey, recipientEmail, subject, htmlContent, textContent, senderEmail, senderName) {
+async function sendViaBrevo(apiKey, recipientEmail, subject, htmlContent, textContent, senderEmail, senderName, replyTo) {
   if (!apiKey || !recipientEmail) {
     return { success: false, error: 'Missing Brevo configuration' };
   }
 
   try {
+    const emailPayload = {
+      sender: {
+        name: senderName,
+        email: senderEmail
+      },
+      to: [
+        {
+          email: recipientEmail,
+          name: 'UnderJoy Admin'
+        }
+      ],
+      subject: subject,
+      htmlContent: htmlContent,
+      textContent: textContent
+    };
+
+    // Add replyTo if provided (so admin can reply to user)
+    if (replyTo) {
+      emailPayload.replyTo = {
+        email: replyTo,
+        name: senderName
+      };
+    }
+
     const response = await fetch('https://api.brevo.com/v3/smtp/email', {
       method: 'POST',
       headers: {
@@ -225,21 +252,7 @@ async function sendViaBrevo(apiKey, recipientEmail, subject, htmlContent, textCo
         'api-key': apiKey,
         'content-type': 'application/json'
       },
-      body: JSON.stringify({
-        sender: {
-          name: senderName,
-          email: senderEmail
-        },
-        to: [
-          {
-            email: recipientEmail,
-            name: 'UnderJoy Admin'
-          }
-        ],
-        subject: subject,
-        htmlContent: htmlContent,
-        textContent: textContent
-      })
+      body: JSON.stringify(emailPayload)
     });
 
     const data = await response.json();
@@ -261,7 +274,7 @@ async function sendViaBrevo(apiKey, recipientEmail, subject, htmlContent, textCo
 /**
  * Send email via SendPulse
  */
-async function sendViaSendPulse(clientId, clientSecret, recipientEmail, subject, htmlContent, senderEmail, senderName) {
+async function sendViaSendPulse(clientId, clientSecret, recipientEmail, subject, htmlContent, senderEmail, senderName, replyTo) {
   if (!clientId || !clientSecret || !recipientEmail) {
     return { success: false, error: 'Missing SendPulse configuration' };
   }
@@ -290,6 +303,32 @@ async function sendViaSendPulse(clientId, clientSecret, recipientEmail, subject,
       };
     }
 
+    // Prepare email payload
+    const emailPayload = {
+      email: {
+        html: htmlContent,
+        text: htmlContent.replace(/<[^>]*>/g, ''), // Strip HTML for text
+        subject: subject,
+        from: {
+          name: senderName,
+          email: senderEmail
+        },
+        to: [
+          {
+            email: recipientEmail
+          }
+        ]
+      }
+    };
+
+    // Add reply_to if provided
+    if (replyTo) {
+      emailPayload.email.reply_to = {
+        email: replyTo,
+        name: senderName
+      };
+    }
+
     // Step 2: Send email
     const emailResponse = await fetch('https://api.sendpulse.com/smtp/emails', {
       method: 'POST',
@@ -297,22 +336,7 @@ async function sendViaSendPulse(clientId, clientSecret, recipientEmail, subject,
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${tokenData.access_token}`
       },
-      body: JSON.stringify({
-        email: {
-          html: htmlContent,
-          text: htmlContent.replace(/<[^>]*>/g, ''), // Strip HTML for text
-          subject: subject,
-          from: {
-            name: senderName,
-            email: senderEmail
-          },
-          to: [
-            {
-              email: recipientEmail
-            }
-          ]
-        }
-      })
+      body: JSON.stringify(emailPayload)
     });
 
     const emailData = await emailResponse.json();
