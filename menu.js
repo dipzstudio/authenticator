@@ -643,7 +643,7 @@ if (currentPage === 'bin') {
     document.querySelectorAll('.bin-restore-btn').forEach(btn => {
       btn.addEventListener('click', () => {
         restoreTargetId = btn.getAttribute('data-id');
-        restoreModal.style.display = 'block';
+        restoreModal.style.display = 'felx';
       });
     });
   }
