@@ -1558,6 +1558,9 @@ if (currentPage === 'support') {
     const name = user.displayName || user.email.split('@')[0] || 'User';
     if (menuUserName) menuUserName.textContent = name;
     if (headerUserName) headerUserName.textContent = name;
+
+    localStorage.setItem('userName', name);
+    localStorage.setItem('userEmail', user.email);
     
     const firstLetter = name.charAt(0).toUpperCase();
     if (userAvatar) {
@@ -1579,6 +1582,9 @@ if (currentPage === 'feedback') {
     const name = user.displayName || user.email.split('@')[0] || 'User';
     if (menuUserName) menuUserName.textContent = name;
     if (headerUserName) headerUserName.textContent = name;
+
+	localStorage.setItem('userName', name);
+    localStorage.setItem('userEmail', user.email);
     
     const firstLetter = name.charAt(0).toUpperCase();
     if (userAvatar) {
