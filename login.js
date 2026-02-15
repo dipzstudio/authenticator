@@ -705,21 +705,7 @@ if (googleLogin) {
 			return;
 		  }
 
-		  // 🔥 Delete all deleted_authenticators for this user
-	      const deletedAuthSnapshot = await db.collection('deleted_authenticators')
-	        .where('uid', '==', user.uid)
-	        .get();
-	
-	      const deleteBatch = db.batch();
-	      deletedAuthSnapshot.forEach(doc => {
-	        deleteBatch.delete(doc.ref);
-	      });
-	      
-	      if (!deletedAuthSnapshot.empty) {
-	        await deleteBatch.commit();
-	      }
-
-		  // 🔥 delete Firebase account
+		  // 🔥 ONLY delete Firebase account
 		  await user.delete();
 
 		  // update modal content to success state
