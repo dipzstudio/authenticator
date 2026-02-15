@@ -1,26 +1,127 @@
-const firebaseConfig = {
-  apiKey: "AIzaSyCC6NzVYzBGRueNlQiOfN55xxLhpu7B8D4",
-  authDomain: "authenticator-9c431.firebaseapp.com",
-  projectId: "authenticator-9c431",
-  storageBucket: "authenticator-9c431.firebasestorage.app",
-  messagingSenderId: "779961497127",
-  appId: "1:779961497127:web:87610389beb7cb9415c002",
-  measurementId: "G-JJB538N8CQ"
-};
+let auth, db;
+
+async function initializeFirebase() {
+  try {
+    const response = await fetch('/api/firebase-config');
+    const result = await response.json();
+    
+    if (result.success) {
+      firebase.initializeApp(result.config);
+      auth = firebase.auth();
+      db = firebase.firestore();
+      console.log('Firebase initialized');
+      
+      db.settings({
+		  cacheSizeBytes: firebase.firestore.CACHE_SIZE_UNLIMITED,
+		  experimentalForceLongPolling: false,
+		  experimentalAutoDetectLongPolling: true
+		});
+      
+      // ✅ Initialize menu page AFTER Firebase is ready
+      initializeMenuPage();
+    }
+  } catch (error) {
+    console.error('Error:', error);
+  }
+}
+
+// Start Firebase initialization
+initializeFirebase();
+
+// Custom error message mapping
+function getCustomErrorMessage(error) {
+  const errorCode = error.code;
+  const errorMessages = {
+    // Authentication errors
+    'auth/invalid-email': 'Please enter a valid email address.',
+    'auth/user-disabled': 'This account has been disabled. Please contact support.',
+    'auth/user-not-found': 'No account found with this email. Please sign up first.',
+    'auth/wrong-password': 'Incorrect password. Please try again.',
+    'auth/invalid-credential': 'Invalid login credentials. Please check your email and password.',
+    'auth/email-already-in-use': 'This email is already registered. Please login instead.',
+    'auth/weak-password': 'Password is too weak. Use at least 6 characters.',
+    'auth/operation-not-allowed': 'This sign-in method is not enabled. Please contact support.',
+    'auth/account-exists-with-different-credential': 'An account already exists with the same email but different sign-in method.',
+    'auth/invalid-verification-code': 'Invalid verification code. Please try again.',
+    'auth/invalid-verification-id': 'Verification session expired. Please try again.',
+    'auth/missing-verification-code': 'Please enter the verification code.',
+    'auth/missing-verification-id': 'Verification failed. Please restart the process.',
+    'auth/too-many-requests': 'Too many unsuccessful attempts. Please try again later.',
+    'auth/requires-recent-login': 'For security reasons, please log in again to continue.',
+    'auth/popup-closed-by-user': 'Sign-in cancelled. Please try again.',
+    'auth/popup-blocked': 'Pop-up blocked by browser. Please allow pop-ups and try again.',
+    'auth/unauthorized-domain': 'This domain is not authorized for authentication.',
+    'auth/cancelled-popup-request': 'Only one authentication popup allowed at a time.',
+    
+    // Network errors
+    'auth/network-request-failed': 'Network error. Please check your internet connection.',
+    'auth/timeout': 'Request timed out. Please try again.',
+    
+    // Invalid action errors
+    'auth/invalid-action-code': 'This link is invalid or has expired.',
+    'auth/expired-action-code': 'This link has expired. Please request a new one.',
+    'auth/user-token-expired': 'Your session has expired. Please log in again.',
+    'auth/invalid-user-token': 'Invalid session. Please log in again.',
+    'auth/credential-already-in-use': 'This credential is already linked to another account.',
+    
+    // Missing fields
+    'auth/missing-email': 'Please enter your email address.',
+    'auth/missing-password': 'Please enter your password.',
+    
+    // Default
+    'default': 'An error occurred. Please try again.'
+  };
+
+  // Check for network errors
+  if (!navigator.onLine || 
+      error.message?.includes('network') || 
+      error.message?.includes('timeout')) {
+    return 'Network error. Please check your internet connection and try again.';
+  }
+
+  return errorMessages[errorCode] || errorMessages['default'];
+}
 
 function handleNetworkError(error) {
   if (!navigator.onLine || 
       error.code === 'auth/network-request-failed' || 
       error.message.includes('network') || 
       error.message.includes('timeout')) {
-    return 'Network Error! Please check your internet connection and try again.';
+    return 'Network error. Please check your internet connection and try again.';
   }
-  return error.message;
+  return getCustomErrorMessage(error);
 }
 
-firebase.initializeApp(firebaseConfig);
-const auth = firebase.auth();
-const db = firebase.firestore(); 
+// Display error message
+function showError(message) {
+  const authMessage = document.getElementById('authMessage');
+  if (authMessage) {
+    authMessage.textContent = message;
+    authMessage.className = 'auth-message error-message';
+    authMessage.style.display = 'block';
+	setTimeout(() => clearMessage(), 3000);
+  }
+}
+
+// Display success message
+function showSuccess(message) {
+  const authMessage = document.getElementById('authMessage');
+  if (authMessage) {
+    authMessage.textContent = message;
+    authMessage.className = 'auth-message success-message';
+    authMessage.style.display = 'block';
+	setTimeout(() => clearMessage(), 3000);
+  }
+}
+
+// Clear message
+function clearMessage() {
+  const authMessage = document.getElementById('authMessage');
+  if (authMessage) {
+    authMessage.textContent = '';
+    authMessage.style.display = 'none';
+  }
+}
 
   // Check if running on native platform
 const isNative = window.Capacitor && window.Capacitor.isNativePlatform();
@@ -66,7 +167,7 @@ Promise.all([
   console.log('Initializing login page...');
   initializeLoginPage();
 });
-	
+		
 function initializeLoginPage() {
   const formTitle = document.getElementById('formTitle');
   const nameGroup = document.getElementById('nameGroup');
@@ -83,7 +184,7 @@ function initializeLoginPage() {
   const switchLink = document.getElementById('switchLink');
   const googleLogin = document.getElementById('googleLogin');
   const appleLogin = document.getElementById('appleLogin');
-  const authError = document.getElementById('authError');
+  const authMessage = document.getElementById('authMessage');
   const buttonGroup = document.querySelector('.button-group');
   const forgotPasswordLink = document.getElementById('forgotPasswordLink');
   const sendResetBtn = document.getElementById('sendResetBtn');
@@ -149,7 +250,7 @@ function showLogin() {
   PasswordGroup.style.display = 'block';
   confirmPasswordGroup.style.display = 'none';
   loginBtn.style.display = 'block';
-  signUpBtn.style.display = 'block';  // ADD THIS LINE
+  signUpBtn.style.display = 'block';
   signUpBtn.textContent = 'Sign Up';
   sendResetBtn.style.display = 'none';
   deleteAccountBtn.style.display = 'none';
@@ -157,7 +258,7 @@ function showLogin() {
   forgotPasswordLink.style.display = 'block';
   socialSection.style.display = 'block';
   switchLink.innerHTML = '';
-  authError.textContent = '';
+  clearMessage();
   [email, nameInput, password, confirmPassword].forEach(el => el.value = '');
 }
 
@@ -168,12 +269,12 @@ function showSignUp() {
   confirmPasswordGroup.style.display = 'block';
   loginBtn.style.display = 'none';
   signUpBtn.textContent = 'Create Account';
-  forgotPasswordLink.style.display = 'none';  // ADD THIS LINE
+  forgotPasswordLink.style.display = 'none';
   deleteSocialButtons.style.display = 'none';
-  authError.textContent = '';
+  clearMessage();
   [email, nameInput, password, confirmPassword].forEach(el => el.value = '');
 
-  switchLink.innerHTML = "Already have account? <a id='loginLink'>Click Login</a>";
+  switchLink.innerHTML = "Already have an account? <a id='loginLink'>Login</a>";
 
   setTimeout(() => {
     const loginLink = document.getElementById('loginLink');
@@ -198,7 +299,7 @@ function showResetPassword() {
   forgotPasswordLink.style.display = 'none';
   socialSection.style.display = 'none';
   deleteSocialButtons.style.display = 'none';
-  authError.textContent = '';
+  clearMessage();
   [email, nameInput, password, confirmPassword].forEach(el => el.value = '');
   
   switchLink.innerHTML = '<a id="backToLoginFromReset">Back to Login</a>';
@@ -226,8 +327,8 @@ function showDeleteAccount() {
   deleteAccountBtn.style.display = 'block';
   forgotPasswordLink.style.display = 'none';
   socialSection.style.display = 'none';
-  deleteSocialButtons.style.display = 'block';  // SHOW DELETE BUTTONS
-  authError.textContent = '';
+  deleteSocialButtons.style.display = 'block';
+  clearMessage();
   [email, nameInput, password, confirmPassword].forEach(el => el.value = '');
   
   switchLink.innerHTML = '<a id="backToLoginFromDelete">Back to Login</a>';
@@ -237,7 +338,7 @@ function showDeleteAccount() {
     if (backLink) {
       backLink.onclick = (e) => {
         e.preventDefault();
-        deleteSocialButtons.style.display = 'none';  // HIDE DELETE BUTTONS
+        deleteSocialButtons.style.display = 'none';
         showLogin();
         socialSection.style.display = 'block';
       };
@@ -248,332 +349,288 @@ function showDeleteAccount() {
   if (signUpBtn) {
     signUpBtn.addEventListener('click', async (e) => {
       e.preventDefault();
-      authError.textContent = '';
+      clearMessage();
 
       if (!isSignup) {
         showSignUp();
         return;
       }
 
-      const emailVal = email.value.trim();
-      const passwordVal = password.value;
-      const nameVal = nameInput.value.trim();
-      const confirmVal = confirmPassword.value;
+      const emailValue = email.value.trim();
+      const nameValue = nameInput.value.trim();
+      const passwordValue = password.value;
+      const confirmPasswordValue = confirmPassword.value;
 
-      if (!emailVal || !nameVal || !passwordVal || !confirmVal) {
-		authError.textContent = 'All fields are required.';
-		return;
-	  }
-		
-	  if (!isValidEmail(emailVal)) {
-		authError.textContent = 'Invalid email format entered.';
-		return;
-	  }
+      if (!isValidEmail(emailValue)) {
+        showError('Please enter a valid email address.');
+        return;
+      }
 
-	  if (!isValidName(nameVal)) {
-		authError.textContent = 'Name must be at least 4 letters.';
-		return;
-	  }
+      if (!isValidName(nameValue)) {
+        showError('Name must be at least 4 letters with no numbers or special characters.');
+        return;
+      }
 
-	  if (passwordVal.length < 8) {
-		authError.textContent = 'Password should be at least 8 characters.';
-		return;
-	  }
+      if (passwordValue.length < 6) {
+        showError('Password must be at least 6 characters long.');
+        return;
+      }
 
-	  if (passwordVal !== confirmVal) {
-		authError.textContent = 'Passwords do not match.';
-		return;
-	  }
+      if (passwordValue !== confirmPasswordValue) {
+        showError('Passwords do not match.');
+        return;
+      }
 
       try {
-			processingSignup = true; // Set flag to true to block the auth listener
-			
-			const userCredential = await auth.createUserWithEmailAndPassword(emailVal, passwordVal);
+        processingSignup = true;
+        const userCredential = await auth.createUserWithEmailAndPassword(emailValue, passwordValue);
+        const user = userCredential.user;
 
-			await userCredential.user.updateProfile({
-				displayName: nameVal
-			});
-			
-			// Finalize state before manual redirect
-			await userCredential.user.getIdToken(true);
-			await auth.currentUser.reload();
-			
-			// Manual redirect after profile is set
-			window.location.href = 'index.html';
+        await db.collection('users').doc(user.uid).set({
+          name: nameValue,
+          email: emailValue,
+          createdAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
 
-		} catch (error) {
-			processingSignup = false; // Reset flag so user can try again if it fails
-			authError.textContent = error.message;
-		}
+        showSuccess('Account created successfully! Redirecting...');
+        setTimeout(() => {
+          processingSignup = false;
+          window.location.replace('index.html');
+        }, 1000);
+      } catch (error) {
+        processingSignup = false;
+        showError(getCustomErrorMessage(error));
+      }
     });
   }
 
   if (loginBtn) {
     loginBtn.addEventListener('click', async (e) => {
-	  e.preventDefault();
-	  authError.textContent = '';
+      e.preventDefault();
+      clearMessage();
 
-	  const emailVal = email.value.trim();
-	  const passwordVal = password.value;
+      const emailValue = email.value.trim();
+      const passwordValue = password.value;
 
-	  if (!emailVal || !passwordVal) {
-		authError.textContent = 'Please enter both email and password.';
-		return;
-	  }
-		
-	  if (!isValidEmail(emailVal)) {
-		authError.textContent = 'Invalid email format entered.';
-		return;
-	  }
-
-	  try {
-		await auth.signInWithEmailAndPassword(emailVal, passwordVal);
-	  } catch (error) {
-		if (error.code === 'auth/invalid-credential' || 
-			error.code === 'auth/wrong-password' || 
-			error.code === 'auth/user-not-found') {
-		  authError.textContent = 'Incorrect email address or password entered.';
-		} else {
-		  authError.textContent = handleNetworkError(error);
-		}
-	  }
-	});
-  }
-
-// Google Sign-In
-if (googleLogin) {
-  googleLogin.addEventListener('click', async (e) => {
-    e.preventDefault();
-    authError.textContent = '';
-    
-    try {
-      if (isNative) {
-        // Ensure initialized
-        await initializeGoogleAuth();
-        
-        const { GoogleAuth } = window.Capacitor.Plugins;
-		
-		try {
-		  await GoogleAuth.signOut();
-		} catch (e) { /* ignore */ }
-        
-        // This opens the native account picker
-        const googleUser = await GoogleAuth.signIn();
-        
-        // Verify token exists
-        if (!googleUser?.authentication?.idToken) {
-          throw new Error('No authentication token received');
-        }
-        
-        // Create Firebase credential
-        const credential = firebase.auth.GoogleAuthProvider.credential(
-          googleUser.authentication.idToken
-        );
-        
-        // Sign in to Firebase
-        await auth.signInWithCredential(credential);
-        
-      } else {
-        // Web version
-        const provider = new firebase.auth.GoogleAuthProvider();
-        provider.setCustomParameters({
-          prompt: 'select_account'
-        });
-        await auth.signInWithPopup(provider);
-      }
-      
-    } catch (error) {
-      
-      // User cancelled
-      if (error.error === '12501' || error.code === 'auth/popup-closed-by-user') {
-        console.log('Sign-in cancelled');
+      if (!emailValue || !passwordValue) {
+        showError('Please enter both email and password.');
         return;
       }
-      
-      authError.textContent = handleNetworkError(error);
-    }
-  });
-}
 
-  // Apple Sign-In
+      if (!isValidEmail(emailValue)) {
+        showError('Please enter a valid email address.');
+        return;
+      }
+
+      try {
+        await auth.signInWithEmailAndPassword(emailValue, passwordValue);
+		showSuccess('Login successful! Redirecting...');
+      } catch (error) {
+        showError(getCustomErrorMessage(error));
+      }
+    });
+  }
+
+  // Forgot Password Link
+  const forgotLink = document.getElementById('forgotLink');
+  if (forgotLink) {
+    forgotLink.addEventListener('click', (e) => {
+      e.preventDefault();
+      showResetPassword();
+    });
+  }
+
+  // Send Reset Password
+  if (sendResetBtn) {
+    sendResetBtn.addEventListener('click', async (e) => {
+      e.preventDefault();
+      clearMessage();
+
+      const emailValue = email.value.trim();
+
+      if (!emailValue) {
+        showError('Please enter your email address.');
+        return;
+      }
+
+      if (!isValidEmail(emailValue)) {
+        showError('Please enter a valid email address.');
+        return;
+      }
+	  
+	const signInMethods = await auth.fetchSignInMethodsForEmail(emailVal);
+
+	if (signInMethods.length === 0) {
+	  showError("This email doesn't exist in our database. Please check and try again.");
+	  return;
+	}
+
+	if (signInMethods.length > 0) {
+	  const hasGoogle = signInMethods.some(m => m.includes('google'));
+	  const hasApple = signInMethods.some(m => m.includes('apple'));
+	  const hasPassword = signInMethods.includes('password');
+	  
+	  if (hasGoogle && !hasPassword) {
+		showError('This email is associated with Google login. Please use "Continue with Google" instead.');
+		return;
+	  }
+	  if (hasApple && !hasPassword) {
+		showError('This email is associated with Apple login. Please use "Continue with Apple" instead.');
+		return;
+	  }
+	}
+
+      try {
+        await auth.sendPasswordResetEmail(emailValue);
+        document.getElementById('resetMessage').textContent = 
+          'Password reset link sent! Please check your email.';
+        document.getElementById('resetModal').style.display = 'flex';
+      } catch (error) {
+        showError(getCustomErrorMessage(error));
+      }
+    });
+  }
+
+  // Delete Account Link
+  const deleteAccountLink = document.getElementById('deleteAccountLink');
+  if (deleteAccountLink) {
+    deleteAccountLink.addEventListener('click', (e) => {
+      e.preventDefault();
+      showDeleteAccount();
+    });
+  }
+
+  // Delete Account with Email/Password
+  if (deleteAccountBtn) {
+    deleteAccountBtn.addEventListener('click', async (e) => {
+      e.preventDefault();
+      clearMessage();
+
+      const emailValue = email.value.trim();
+      const passwordValue = password.value;
+
+      if (!emailValue || !passwordValue) {
+        showError('Please enter both email and password.');
+        return;
+      }
+
+      try {
+        isDeletingAccount = true;
+
+        const userCredential = await auth.signInWithEmailAndPassword(emailValue, passwordValue);
+        
+        const snapshot = await db.collection('authenticators')
+          .where('uid', '==', userCredential.user.uid)
+          .get();
+
+        if (!snapshot.empty) {
+          showError('Please delete all authenticators before deleting your account.');
+          await auth.signOut();
+          isDeletingAccount = false;
+          return;
+        }
+
+        document.getElementById('deleteConfirmModal').style.display = 'flex';
+
+      } catch (error) {
+        isDeletingAccount = false;
+        showError(getCustomErrorMessage(error));
+      }
+    });
+  }
+
+  // Google Login
+  if (googleLogin) {
+    googleLogin.addEventListener('click', async (e) => {
+      e.preventDefault();
+      clearMessage();
+
+      try {
+        let userCredential;
+
+        if (isNative) {
+          const { GoogleAuth } = window.Capacitor.Plugins;
+
+          if (!googleAuthInitialized) {
+            await initializeGoogleAuth();
+          }
+
+          const result = await GoogleAuth.signIn();
+
+          const credential = firebase.auth.GoogleAuthProvider.credential(result.authentication.idToken);
+
+          userCredential = await auth.signInWithCredential(credential);
+
+        } else {
+          const provider = new firebase.auth.GoogleAuthProvider();
+          provider.setCustomParameters({ prompt: 'select_account' });
+          userCredential = await auth.signInWithPopup(provider);
+        }
+
+        const userDoc = await db.collection('users').doc(userCredential.user.uid).get();
+
+        if (!userDoc.exists) {
+          await db.collection('users').doc(userCredential.user.uid).set({
+            name: userCredential.user.displayName || 'User',
+            email: userCredential.user.email,
+            createdAt: firebase.firestore.FieldValue.serverTimestamp()
+          });
+        }
+
+      } catch (error) {
+        showError(getCustomErrorMessage(error));
+      }
+    });
+  }
+
+  // Apple Login
   if (appleLogin) {
     appleLogin.addEventListener('click', async (e) => {
       e.preventDefault();
-      authError.textContent = '';
+      clearMessage();
 
       try {
+        let userCredential;
+
         if (isNative) {
           const { FirebaseAuthentication } = window.Capacitor.Plugins;
+
           const result = await FirebaseAuthentication.signInWithApple();
+
           const credential = firebase.auth.OAuthProvider.credential({
             idToken: result.credential.idToken,
             rawNonce: result.credential.nonce
           });
-          await auth.signInWithCredential(credential);
+
+          userCredential = await auth.signInWithCredential(credential);
+
         } else {
           const provider = new firebase.auth.OAuthProvider('apple.com');
-          await auth.signInWithPopup(provider);
+          userCredential = await auth.signInWithPopup(provider);
         }
+
+        const userDoc = await db.collection('users').doc(userCredential.user.uid).get();
+
+        if (!userDoc.exists) {
+          await db.collection('users').doc(userCredential.user.uid).set({
+            name: userCredential.user.displayName || 'User',
+            email: userCredential.user.email,
+            createdAt: firebase.firestore.FieldValue.serverTimestamp()
+          });
+        }
+
       } catch (error) {
-		console.error('Apple sign-in error:', error);
-		authError.textContent = 'Apple sign-in is not available at this moment.';  // CHANGE: Simple message
-		appleLogin.disabled = true;
-		appleLogin.style.opacity = '0.5';
+        showError(getCustomErrorMessage(error));
       }
     });
   }
 	
-	// Forgot Password Link
-	const forgotLink = document.getElementById('forgotLink');
-	if (forgotLink) {
-	  forgotLink.addEventListener('click', (e) => {
-		e.preventDefault();
-		showResetPassword();
-	  });
-	}
-
-	// Delete Account Link
-	const deleteAccountLink = document.getElementById('deleteAccountLink');
-	if (deleteAccountLink) {
-	  deleteAccountLink.addEventListener('click', (e) => {
-		e.preventDefault();
-		showDeleteAccount();
-	  });
-	}
-
-	// Send Reset Password Email
-  if (sendResetBtn) {
-	sendResetBtn.addEventListener('click', async (e) => {
-	  e.preventDefault();
-	  authError.textContent = '';
-
-	  const emailVal = email.value.trim();
-	  if (!emailVal) {
-		authError.textContent = 'Please enter your email address.';
-		return;
-	  }
-
-	  if (!isValidEmail(emailVal)) {
-		authError.textContent = 'Invalid email format entered.';
-		return;
-	  }
-
-	  try {
-		const signInMethods = await auth.fetchSignInMethodsForEmail(emailVal);
-
-		if (signInMethods.length === 0) {
-		  authError.textContent = "This email doesn't exist in our database. Please check and try again.";
-		  return;
-		}
-
-		const hasGoogle = signInMethods.some(m => m.includes('google'));
-		const hasApple = signInMethods.some(m => m.includes('apple'));
-		const hasPassword = signInMethods.includes('password');
-
-		if (hasGoogle && !hasPassword) {
-		  authError.textContent = 'This email is associated with a Google login. You may reset your Google password.';
-		  return;
-		}
-
-		if (hasApple && !hasPassword) {
-		  authError.textContent = 'This email is associated with an Apple login. You may reset your Apple password.';
-		  return;
-		}
-
-		if (hasPassword) {
-		  await auth.sendPasswordResetEmail(emailVal);
-
-		  const resetModal = document.getElementById('resetModal');
-		  const resetMessage = document.getElementById('resetMessage');
-		  resetMessage.textContent = `A password reset link has been sent to ${emailVal}. Please check your inbox and reset within 2 hours.`;
-		  resetModal.style.display = 'block';
-		}
-
-	  } catch (error) {
-		authError.textContent = handleNetworkError(error);
-	  }
-	});
-  }
-	
-	// Delete Account Button - Email/Password
-  if (deleteAccountBtn) {
-    deleteAccountBtn.addEventListener('click', async (e) => {
-      e.preventDefault();
-      authError.textContent = '';
-      
-      const emailVal = email.value.trim();
-      const passwordVal = password.value;
-      
-      if (!emailVal || !passwordVal) {
-        authError.textContent = 'Please enter both email and password.';
-        return;
-      }
-      
-      if (!isValidEmail(emailVal)) {
-        authError.textContent = 'Invalid email format entered.';
-        return;
-      }
-      
-      try {
-        const signInMethods = await auth.fetchSignInMethodsForEmail(emailVal);
-        
-        if (signInMethods.length === 0) {
-          authError.textContent = "This email doesn't exist in our database.";
-          return;
-        }
-        
-        const hasGoogle = signInMethods.some(method => method.includes('google'));
-        const hasApple = signInMethods.some(method => method.includes('apple'));
-        const hasPassword = signInMethods.includes('password');
-        
-        if (hasGoogle && !hasPassword) {
-          authError.textContent = "This account is associated with Google account. Click on Delete with Google below to proceed further.";
-          return;
-        }
-        
-        if (hasApple && !hasPassword) {
-          authError.textContent = "This account is associated with Apple account. Click on Delete with Apple below to proceed further.";
-          return;
-        }
-        
-        if (hasPassword) {
-          isDeletingAccount = true;
-          
-          const userCredential = await auth.signInWithEmailAndPassword(emailVal, passwordVal);
-          
-          const snapshot = await db.collection('authenticators')
-            .where('uid', '==', userCredential.user.uid)
-            .get();
-          
-          if (!snapshot.empty) {
-            authError.textContent = 'Please delete all your authenticator accounts before deleting account.';
-            await auth.signOut();
-            isDeletingAccount = false;
-            return;
-          }
-          
-          document.getElementById('deleteConfirmModal').style.display = 'block';
-        }
-        
-      } catch (error) {
-        isDeletingAccount = false;
-        if (error.code === 'auth/invalid-credential' || 
-            error.code === 'auth/wrong-password' || 
-            error.code === 'auth/user-not-found') {
-          authError.textContent = 'Incorrect email address or password entered.';
-        } else {
-          authError.textContent = handleNetworkError(error);
-        }
-      }
-    });
-  }
-	
-	// Delete with Google Button
+	// Delete with Google
 	const deleteWithGoogle = document.getElementById('deleteWithGoogle');
 	if (deleteWithGoogle) {
 	  deleteWithGoogle.addEventListener('click', async (e) => {
 		e.preventDefault();
-		authError.textContent = '';
+		clearMessage();
 
 		try {
 		  isDeletingAccount = true;
@@ -581,16 +638,15 @@ if (googleLogin) {
 		  let userCredential;
 
 		  if (isNative) {
-			await initializeGoogleAuth();
 			const { GoogleAuth } = window.Capacitor.Plugins;
 
-			try { await GoogleAuth.signOut(); } catch(e){}
+			if (!googleAuthInitialized) {
+			  await initializeGoogleAuth();
+			}
 
-			const googleUser = await GoogleAuth.signIn();
+			const result = await GoogleAuth.signIn();
 
-			const credential = firebase.auth.GoogleAuthProvider.credential(
-			  googleUser.authentication.idToken
-			);
+			const credential = firebase.auth.GoogleAuthProvider.credential(result.authentication.idToken);
 
 			userCredential = await auth.signInWithCredential(credential);
 
@@ -605,17 +661,17 @@ if (googleLogin) {
 			.get();
 
 		  if (!snapshot.empty) {
-			authError.textContent = 'Please delete authenticators first.';
+			showError('Please delete all authenticators before deleting your account.');
 			await auth.signOut();
 			isDeletingAccount = false;
 			return;
 		  }
 
-		  document.getElementById('deleteConfirmModal').style.display = 'block';
+		  document.getElementById('deleteConfirmModal').style.display = 'flex';
 
 		} catch (error) {
 		  isDeletingAccount = false;
-		  authError.textContent = 'Google authentication failed. Try again.';
+		  showError(getCustomErrorMessage(error));
 		}
 	  });
 	}
@@ -625,7 +681,7 @@ if (googleLogin) {
 	if (deleteWithApple) {
 	  deleteWithApple.addEventListener('click', async (e) => {
 		e.preventDefault();
-		authError.textContent = '';
+		clearMessage();
 
 		try {
 		  isDeletingAccount = true;
@@ -654,17 +710,17 @@ if (googleLogin) {
 			.get();
 
 		  if (!snapshot.empty) {
-			authError.textContent = 'Please delete authenticators first.';
+			showError('Please delete all authenticators before deleting your account.');
 			await auth.signOut();
 			isDeletingAccount = false;
 			return;
 		  }
 
-		  document.getElementById('deleteConfirmModal').style.display = 'block';
+		  document.getElementById('deleteConfirmModal').style.display = 'flex';
 
 		} catch (error) {
 		  isDeletingAccount = false;
-		  authError.textContent = 'Apple authentication failed.';
+		  showError(getCustomErrorMessage(error));
 		}
 	  });
 	}
@@ -705,7 +761,21 @@ if (googleLogin) {
 			return;
 		  }
 
-		  // 🔥 ONLY delete Firebase account
+		  // 🔥 Delete all deleted_authenticators for this user
+	      const deletedAuthSnapshot = await db.collection('deleted_authenticators')
+	        .where('uid', '==', user.uid)
+	        .get();
+	
+	      const deleteBatch = db.batch();
+	      deletedAuthSnapshot.forEach(doc => {
+	        deleteBatch.delete(doc.ref);
+	      });
+	      
+	      if (!deletedAuthSnapshot.empty) {
+	        await deleteBatch.commit();
+	      }
+
+		  // 🔥 delete Firebase account
 		  await user.delete();
 
 		  // update modal content to success state
@@ -722,7 +792,7 @@ if (googleLogin) {
 		  if (error.code === 'auth/requires-recent-login') {
 			alert("For security reasons, please log in again before deleting.");
 		  } else {
-			alert("Error deleting account: " + error.message);
+			alert("Error deleting account: " + getCustomErrorMessage(error));
 		  }
 
 		  // restore original buttons for retry
@@ -765,10 +835,10 @@ if (googleLogin) {
 		
 		if (input.type === 'password') {
 		  input.type = 'text';
-		  this.innerHTML = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg>';
+		  this.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg>';
 		} else {
 		  input.type = 'password';
-		  this.innerHTML = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>';
+		  this.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>';
 		}
 	  });
 	});
@@ -813,7 +883,7 @@ if (googleLogin) {
 
   if (openBtn && modal && closeBtn) {
     openBtn.onclick = function() {
-      modal.style.display = "block";
+      modal.style.display = "flex";
     };
     closeBtn.onclick = function() {
       modal.style.display = "none";
