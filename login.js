@@ -458,7 +458,7 @@ function showDeleteAccount() {
         return;
       }
 	  
-	const signInMethods = await auth.fetchSignInMethodsForEmail(emailVal);
+	const signInMethods = await auth.fetchSignInMethodsForEmail(emailValue);
 
 	if (signInMethods.length === 0) {
 	  showError("This email doesn't exist in our database. Please check and try again.");
