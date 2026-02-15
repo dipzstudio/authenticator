@@ -18,7 +18,7 @@ async function initializeFirebase() {
 		});
       
       // ✅ Initialize menu page AFTER Firebase is ready
-      initializeMenuPage();
+      initializeLoginPage();
     }
   } catch (error) {
     console.error('Error:', error);
