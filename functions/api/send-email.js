@@ -42,7 +42,7 @@ export async function onRequestPost(context) {
     const SENDPULSE_ID = context.env.SENDPULSE_ID;
     const SENDPULSE_SECRET = context.env.SENDPULSE_SECRET;
     const RECIPIENT_EMAIL = context.env.RECIPIENT_EMAIL; // Your admin email
-    const NOREPLY_EMAIL = context.env.NOREPLY_EMAIL || 'noreply-auth@underjoy.in'; // Sender email
+    const NOREPLY_EMAIL = context.env.NOREPLY_EMAIL || 'auth-feedback@underjoy.in'; // Sender email
 
     // Use user's email and name, with fallbacks
     const userName = name || 'Anonymous User';
